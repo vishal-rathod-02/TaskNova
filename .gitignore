@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+backend/instance/
+backend/migrations/
+backend/tasknova.db
+frontend/node_modules/
+frontend/dist/
