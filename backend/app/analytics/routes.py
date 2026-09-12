@@ -1,11 +1,11 @@
 from datetime import timedelta
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
 from ..extensions import db
-from ..models import ActivityLog, Project, Task, User
+from ..models import ActivityLog, DailyReport, Project, Task, User
 from ..models.time import utcnow
 from ..utils.auth import require_current_user, role_required
 from ..utils.cache import get_cached_json, set_cached_json
@@ -80,6 +80,31 @@ def personal_dashboard():
     stats = _personal_stats(user)
     set_cached_json(key, stats, current_app.config["DASHBOARD_CACHE_TTL"])
     return jsonify({"stats": stats, "source": "database"})
+
+
+@analytics_bp.get("/report/latest")
+@jwt_required()
+def latest_report():
+    user = require_current_user()
+    if not user:
+        return jsonify({"message": "Unauthorized or blocked user."}), 403
+    report = DailyReport.query.filter_by(user_id=user.id).order_by(DailyReport.report_date.desc()).first()
+    if not report:
+        return jsonify({"report": None})
+    return jsonify({"report": report.to_dict()})
+
+
+@analytics_bp.get("/report/history")
+@jwt_required()
+def report_history():
+    user = require_current_user()
+    if not user:
+        return jsonify({"message": "Unauthorized or blocked user."}), 403
+    days = min(max(request.args.get("days", 7, type=int), 1), 30)
+    reports = (
+        DailyReport.query.filter_by(user_id=user.id).order_by(DailyReport.report_date.desc()).limit(days).all()
+    )
+    return jsonify({"reports": [report.to_dict() for report in reports]})
 
 
 @analytics_bp.get("/admin")

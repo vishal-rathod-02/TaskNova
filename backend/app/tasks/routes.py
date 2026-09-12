@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from ..extensions import db
-from ..models import ActivityLog, Project, Task
+from ..models import ActivityLog, Notification, Project, Task
 from ..utils.activity import log_task_activity
 from ..utils.auth import require_current_user
 from ..utils.cache import invalidate_dashboard_cache
@@ -116,6 +116,7 @@ def delete_task(task_id):
     if error_response:
         return error_response
     log_task_activity(task.id, user.id, "deleted", {"before": {"title": task.title, "status": task.status}})
+    Notification.query.filter_by(task_id=task.id).delete(synchronize_session=False)
     db.session.delete(task)
     db.session.commit()
     invalidate_dashboard_cache(user.id)

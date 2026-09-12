@@ -2,17 +2,38 @@ import logging
 from datetime import timedelta
 
 from flask import current_app
+from sqlalchemy import func
 
 from .. import extensions
 from ..celery_app import celery
-from ..models import Project, Task
+from ..extensions import db
+from ..models import DailyReport, Notification, Project, Task, User
 from ..models.time import utcnow
 
 logger = logging.getLogger(__name__)
 
 
-@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
-def send_deadline_reminders(self):
+def _same_day_notification_exists(user_id, kind, task_id, day):
+    start = day.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = start + timedelta(days=1)
+    return (
+        Notification.query.filter(
+            Notification.user_id == user_id,
+            Notification.kind == kind,
+            Notification.task_id == task_id,
+            Notification.created_at >= start,
+            Notification.created_at < end,
+        ).first()
+        is not None
+    )
+
+
+def run_deadline_reminders():
+    """Create one persistent notification per due/overdue task per owner per day.
+
+    Extracted from the Celery task body so tests can exercise the same logic
+    inside a Flask test-app context without a broker.
+    """
     now = utcnow()
     window_end = now + timedelta(hours=current_app.config["REMINDER_WINDOW_HOURS"])
     tasks = (
@@ -22,6 +43,7 @@ def send_deadline_reminders(self):
     )
     notified = 0
     for task in tasks:
+        kind = "overdue" if task.due_date < now else "deadline_due"
         reminder_key = f"deadline-reminder:{task.id}:{now.strftime('%Y%m%d%H')}"
         if extensions.redis_client:
             try:
@@ -29,16 +51,81 @@ def send_deadline_reminders(self):
                     continue
             except Exception:
                 logger.warning("Reminder deduplication unavailable for task %s", task.id)
+        if _same_day_notification_exists(task.project.owner_id, kind, task.id, now):
+            continue
+        due_label = task.due_date.strftime("%b %d, %H:%M")
+        title = f"Overdue: {task.title}" if kind == "overdue" else f"Due soon: {task.title}"
+        db.session.add(
+            Notification(
+                user_id=task.project.owner_id,
+                kind=kind,
+                title=title[:160],
+                body=f"'{task.title}' in {task.project.name} is due {due_label}.",
+                task_id=task.id,
+            )
+        )
         logger.info("Deadline reminder queued for owner=%s task=%s due=%s", task.project.owner_id, task.id, task.due_date.isoformat())
         notified += 1
+    db.session.commit()
     return {"checked": len(tasks), "notified": notified, "generated_at": now.isoformat()}
+
+
+def run_daily_productivity_report():
+    """Write one DailyReport per active user plus a matching notification."""
+    now = utcnow()
+    today = now.date()
+    users = User.query.filter_by(is_blocked=False).all()
+    reports_written = 0
+    for user in users:
+        base_query = Task.query.join(Project).filter(Project.owner_id == user.id)
+        total = base_query.count()
+        if not total:
+            continue
+        completed = base_query.filter(Task.status == "done").count()
+        overdue = base_query.filter(Task.due_date.isnot(None), Task.due_date < now, Task.status != "done").count()
+        report = DailyReport.query.filter_by(user_id=user.id, report_date=today).first()
+        if report:
+            report.total_tasks = total
+            report.completed_tasks = completed
+            report.overdue_tasks = overdue
+        else:
+            db.session.add(
+                DailyReport(
+                    user_id=user.id,
+                    report_date=today,
+                    total_tasks=total,
+                    completed_tasks=completed,
+                    overdue_tasks=overdue,
+                )
+            )
+        existing = Notification.query.filter_by(user_id=user.id, kind="daily_report").filter(
+            func.date(Notification.created_at) == today
+        ).first()
+        body = f"{completed} of {total} tasks done, {overdue} overdue on {today.isoformat()}."
+        if existing:
+            existing.title = "Daily productivity report"
+            existing.body = body
+        else:
+            db.session.add(
+                Notification(
+                    user_id=user.id,
+                    kind="daily_report",
+                    title="Daily productivity report",
+                    body=body,
+                )
+            )
+        reports_written += 1
+    db.session.commit()
+    report = {"generated_at": now.isoformat(), "reports_written": reports_written}
+    logger.info("Daily productivity report generated: %s", report)
+    return report
+
+
+@celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
+def send_deadline_reminders(self):
+    return run_deadline_reminders()
 
 
 @celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
 def generate_daily_productivity_report(self):
-    now = utcnow()
-    completed = Task.query.filter(Task.status == "done", Task.updated_at >= now - timedelta(days=1)).count()
-    overdue = Task.query.filter(Task.due_date.isnot(None), Task.due_date < now, Task.status != "done").count()
-    report = {"generated_at": now.isoformat(), "completed_last_24h": completed, "overdue_tasks": overdue}
-    logger.info("Daily productivity report generated: %s", report)
-    return report
+    return run_daily_productivity_report()

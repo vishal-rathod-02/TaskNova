@@ -18,6 +18,8 @@ class User(db.Model):
     projects = db.relationship("Project", back_populates="owner", lazy="select", cascade="all, delete-orphan")
     created_tasks = db.relationship("Task", back_populates="creator", lazy="select", foreign_keys="Task.created_by")
     activity_logs = db.relationship("ActivityLog", back_populates="actor", lazy="select")
+    notifications = db.relationship("Notification", back_populates="user", lazy="select", cascade="all, delete-orphan")
+    daily_reports = db.relationship("DailyReport", back_populates="user", lazy="select", cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

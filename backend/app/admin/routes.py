@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ..extensions import db
-from ..models import ActivityLog, Project, Task, User
+from ..models import ActivityLog, DailyReport, Notification, Project, Task, User
 from ..utils.auth import role_required
 from ..utils.cache import invalidate_dashboard_cache
 
@@ -49,6 +49,8 @@ def delete_user(user_id):
         Project.query.filter(Project.id.in_(project_ids)).delete(synchronize_session=False)
     # A user may have activity on tasks that were later reassigned in a future extension.
     ActivityLog.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+    Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+    DailyReport.query.filter_by(user_id=user.id).delete(synchronize_session=False)
     db.session.delete(user)
     db.session.commit()
     invalidate_dashboard_cache()

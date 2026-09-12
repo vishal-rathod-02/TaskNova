@@ -11,6 +11,7 @@ from .celery_app import init_celery
 from .config import Config
 from .extensions import cors, db, init_redis, jwt, migrate
 from .models import ActivityLog, Project, Task, User
+from .notifications import notifications_bp
 from .projects import projects_bp
 from .tasks import tasks_bp
 
@@ -38,6 +39,7 @@ def create_app(config_override=None):
     app.register_blueprint(tasks_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(notifications_bp)
 
     if app.config.get("AUTO_CREATE_DB", True):
         with app.app_context():
