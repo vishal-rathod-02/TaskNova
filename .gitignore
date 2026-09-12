@@ -1,10 +1,14 @@
 __pycache__/
 *.pyc
+.pytest_cache/
 .env
 .venv/
 venv/
 backend/instance/
 backend/migrations/
 backend/tasknova.db
+backend/uploads/
+backend/celerybeat-schedule
+backend/celerybeat-schedule-*
 frontend/node_modules/
 frontend/dist/

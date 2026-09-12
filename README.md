@@ -1,65 +1,146 @@
-# TaskNova - Smart Task & Productivity Management System
+# TaskNova
 
-TaskNova is a full-stack productivity app built with Flask + Vue.
+TaskNova is a smart task and productivity management system for individuals and small teams. Flask serves a JSON API; Vue 3 + Tailwind provides the Daylight Ledger SPA.
 
-## Included Features
+## User roles
 
-- JWT auth (register, login, refresh, current user)
-- Role-based access (`user`, `admin`)
-- Projects CRUD
-- Tasks CRUD with deadlines, priority and completion flow
-- Task activity logs
-- Admin user management (list users, block/unblock, delete non-admin users)
-- Analytics dashboard APIs
-- Redis caching for dashboard stats
-- Celery background task hooks (deadline reminders and daily reports)
+There are 2 roles (`backend/app/models/user.py:14`, enforced by `role_required` in `backend/app/utils/auth.py:24`):
 
-## Stack
+| Role | How it is created | What it can do |
+| --- | --- | --- |
+| `user` | Default for every `POST /api/auth/register` | Own projects/tasks, personal dashboard, task activity |
+| `admin` | Seeded via `flask --app run.py seed`, never via public register | Everything above system-wide, plus `GET/PATCH/DELETE /api/admin/users` and `/api/analytics/admin` |
 
-- Backend: Flask, SQLAlchemy, JWT, Redis, Celery
-- Frontend: Vue 3, Pinia, Vue Router, Axios, Vite
-- DB: SQLite by default (switchable to PostgreSQL via `DATABASE_URL`)
+Admins cannot be blocked or deleted through the admin API. Blocked users cannot log in.
 
-## Run Backend
+## Repository layout
 
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-flask --app run.py shell
+```text
+TaskNova/
+  README.md
+  backend/
+    run.py
+    celery_worker.py
+    requirements.txt
+    .env.example
+    tests/
+    app/
+      __init__.py
+      config.py
+      extensions.py
+      celery_app.py
+      auth/
+      projects/
+      tasks/
+      admin/
+      analytics/
+      tasks_jobs/
+      models/
+      utils/
+  frontend/
+    index.html
+    vite.config.js
+    tailwind.config.cjs
+    postcss.config.cjs
+    .env.example
+    src/
+      main.js
+      style.css
+      router/
+      api/client.js
+      services/      # auth, projects, tasks, admin, analytics
+      stores/        # auth, projects, tasks, analytics, admin
+      components/    # PageHeader, EmptyState, FormField, TaskLedgerRow, AppIcon, ToastNotifications
+      composables/   # toast, useTheme
+      views/         # Login, Register, Dashboard, Projects, Tasks, Admin
 ```
 
-Initialize DB and seed admin:
+Only source is committed. Local artifacts stay untracked via `.gitignore`:
 
-```bash
+- `frontend/node_modules/`, `frontend/dist/` — reinstall/rebuild with npm
+- `backend/.venv/`, `__pycache__/`, `.pytest_cache/`, `backend/instance/`, `backend/uploads/`, `backend/celerybeat-schedule*`, `*.db`
+- Root and service `.env` files — copy from `.env.example`
+
+`frontend/dist/` is a rebuildable artifact and is not kept in the workspace.
+
+## Prerequisites
+
+- Python 3.11+
+- Node.js 20+
+- Redis optional; API and UI work without it, caching/reminders degrade gracefully
+
+## Backend setup
+
+```powershell
 cd backend
-flask --app run.py shell -c "from app.extensions import db; db.create_all()"
-flask --app run.py seed
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
 python run.py
 ```
 
-## Run Frontend
+API: `http://127.0.0.1:5001`, health: `http://127.0.0.1:5001/health`.
 
-```bash
+Configure `backend/.env` from `.env.example`: `SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGINS`, token TTLs, dashboard TTLs, `REMINDER_WINDOW_HOURS`, `AUTO_CREATE_DB`.
+
+Seed the admin account:
+
+```powershell
+flask --app run.py seed
+```
+
+Dev admin: `admin@tasknova.com` / `admin123`. Change it outside local development.
+
+## Frontend setup
+
+```powershell
 cd frontend
 npm install
+Copy-Item .env.example .env
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173`, backend on `http://127.0.0.1:5001`.
+SPA: `http://localhost:5173`. `VITE_API_BASE_URL` defaults to `http://127.0.0.1:5001/api`.
 
-## Celery + Redis (Optional Runtime)
+Sign in as admin with the seeded credentials; the `Admin` navigation appears only for `role === "admin"`.
 
-Start Redis (local install or Docker), then:
+## Optional Redis and Celery
 
-```bash
+```powershell
 cd backend
-celery -A app.tasks.celery worker --loglevel=info
+.\.venv\Scripts\Activate.ps1
+celery -A celery_worker.celery worker --loglevel=info
+celery -A celery_worker.celery beat --loglevel=info
 ```
 
-You can later schedule periodic jobs via Celery Beat for:
+Beat schedules deadline reminders every 15 minutes and the daily productivity report at 00:05 UTC.
 
-- `send_deadline_reminders`
-- `generate_daily_productivity_report`
+## Validation
+
+```powershell
+cd backend
+python -m pytest -q
+
+cd ..\frontend
+npm run build
+```
+
+## Core API
+
+| Method | Path | Access |
+| --- | --- | --- |
+| POST | `/api/auth/register` | Public, always creates `user` |
+| POST | `/api/auth/login` | Public |
+| POST | `/api/auth/refresh` | Refresh token |
+| GET | `/api/auth/me` | Authenticated |
+| GET/POST | `/api/projects` | Owner |
+| GET/PUT/DELETE | `/api/projects/:id` | Owner |
+| GET/POST | `/api/projects/:id/tasks` | Owner |
+| GET/POST | `/api/tasks` | Owner, filterable + paginated |
+| GET/PUT/DELETE | `/api/tasks/:id` | Owner |
+| POST | `/api/tasks/:id/complete` | Owner |
+| GET | `/api/tasks/:id/activity` | Owner |
+| GET | `/api/analytics/me` | Authenticated |
+| GET/PATCH/DELETE | `/api/admin/users`, `/api/admin/users/:id/block`, `/api/admin/users/:id` | `admin` only |
+| GET | `/api/analytics/admin` | `admin` only |
