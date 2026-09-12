@@ -1,5 +1,5 @@
 from ..extensions import db
-from .time import utcnow
+from .time import iso_utc, utcnow
 
 
 class Task(db.Model):
@@ -30,10 +30,13 @@ class Task(db.Model):
             "description": self.description,
             "priority": self.priority,
             "status": self.status,
-            "due_date": self.due_date.isoformat() if self.due_date else None,
+            # New writes arrive UTC-normalized from the frontend. Legacy rows
+            # keep their previous comparison basis; re-save a due date to
+            # normalize it if its displayed time drifts by your UTC offset.
+            "due_date": iso_utc(self.due_date),
             "project_id": self.project_id,
             "project_name": self.project.name if self.project else None,
             "created_by": self.created_by,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
+            "updated_at": iso_utc(self.updated_at),
         }

@@ -8,7 +8,7 @@ from .. import extensions
 from ..celery_app import celery
 from ..extensions import db
 from ..models import DailyReport, Notification, Project, Task, User
-from ..models.time import utcnow
+from ..models.time import iso_utc, utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def run_deadline_reminders():
         logger.info("Deadline reminder queued for owner=%s task=%s due=%s", task.project.owner_id, task.id, task.due_date.isoformat())
         notified += 1
     db.session.commit()
-    return {"checked": len(tasks), "notified": notified, "generated_at": now.isoformat()}
+    return {"checked": len(tasks), "notified": notified, "generated_at": iso_utc(now)}
 
 
 def run_daily_productivity_report():
@@ -116,7 +116,7 @@ def run_daily_productivity_report():
             )
         reports_written += 1
     db.session.commit()
-    report = {"generated_at": now.isoformat(), "reports_written": reports_written}
+    report = {"generated_at": iso_utc(now), "reports_written": reports_written}
     logger.info("Daily productivity report generated: %s", report)
     return report
 

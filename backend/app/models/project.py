@@ -1,5 +1,5 @@
 from ..extensions import db
-from .time import utcnow
+from .time import iso_utc, utcnow
 
 
 class Project(db.Model):
@@ -20,7 +20,7 @@ class Project(db.Model):
             "name": self.name,
             "description": self.description,
             "owner_id": self.owner_id,
-            "created_at": self.created_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
         }
         if include_task_count:
             payload["task_count"] = len(self.tasks)

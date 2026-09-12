@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 PRIORITIES = {"low", "medium", "high"}
@@ -14,9 +14,14 @@ def parse_iso_datetime(value):
     if not value:
         return None
     try:
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).replace(tzinfo=None)
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
         return None
+    if parsed.tzinfo is not None:
+        # Zoned input (e.g. the frontend's UTC-normalized due dates): store the
+        # true UTC instant while keeping the naive-UTC column contract.
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
 
 
 def validate_registration(payload):

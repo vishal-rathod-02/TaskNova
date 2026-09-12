@@ -1,7 +1,7 @@
 import json
 
 from ..extensions import db
-from .time import utcnow
+from .time import iso_utc, utcnow
 
 
 class ActivityLog(db.Model):
@@ -27,7 +27,7 @@ class ActivityLog(db.Model):
             "id": self.id,
             "action": self.action,
             "detail": detail,
-            "created_at": self.created_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
             "task_id": self.task_id,
             "actor_id": self.user_id,
             "actor_name": self.actor.full_name if self.actor else "Unknown user",

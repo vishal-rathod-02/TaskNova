@@ -1,5 +1,5 @@
 from ..extensions import db
-from .time import utcnow
+from .time import iso_utc, utcnow
 
 
 class Notification(db.Model):
@@ -24,7 +24,7 @@ class Notification(db.Model):
             "body": self.body,
             "task_id": self.task_id,
             "is_read": self.is_read,
-            "created_at": self.created_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
         }
 
 
@@ -49,5 +49,5 @@ class DailyReport(db.Model):
             "total_tasks": self.total_tasks,
             "completed_tasks": self.completed_tasks,
             "overdue_tasks": self.overdue_tasks,
-            "created_at": self.created_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
         }

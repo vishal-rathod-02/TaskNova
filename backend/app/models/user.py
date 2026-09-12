@@ -1,7 +1,7 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db
-from .time import utcnow
+from .time import iso_utc, utcnow
 
 
 class User(db.Model):
@@ -34,5 +34,5 @@ class User(db.Model):
             "email": self.email,
             "role": self.role,
             "is_blocked": self.is_blocked,
-            "created_at": self.created_at.isoformat(),
+            "created_at": iso_utc(self.created_at),
         }
