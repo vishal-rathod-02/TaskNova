@@ -34,6 +34,7 @@ TaskNova/
       tasks/
       admin/
       analytics/
+      notifications/ # inbox API for persisted job output
       tasks_jobs/
       models/
       utils/
@@ -48,11 +49,11 @@ TaskNova/
       style.css
       router/
       api/client.js
-      services/      # auth, projects, tasks, admin, analytics
-      stores/        # auth, projects, tasks, analytics, admin
-      components/    # PageHeader, EmptyState, FormField, TaskLedgerRow, AppIcon, ToastNotifications
+      services/      # auth, projects, tasks, admin, analytics, notifications
+      stores/        # auth, projects, tasks, analytics, admin, notifications
+      components/    # PageHeader, EmptyState, FormField, TaskLedgerRow, AppIcon, ToastNotifications, UserMenu, AppErrorBoundary
       composables/   # toast, useTheme
-      views/         # Login, Register, Dashboard, Projects, Tasks, Admin
+      views/         # Login, Register, Dashboard, Projects, Tasks, Admin, Notifications, NotFound
 ```
 
 Only source is committed. Local artifacts stay untracked via `.gitignore`:
@@ -84,6 +85,8 @@ API: `http://127.0.0.1:5001`, health: `http://127.0.0.1:5001/health`.
 
 Configure `backend/.env` from `.env.example`: `SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGINS`, token TTLs, dashboard TTLs, `REMINDER_WINDOW_HOURS`, `AUTO_CREATE_DB`.
 
+`CORS_ORIGINS` must list each frontend origin exactly, with no trailing slash — e.g. `http://localhost:5173,http://127.0.0.1:5173`. A missing or slashed entry makes the browser block API calls with `No 'Access-Control-Allow-Origin' header`. After changing it, or after any backend code change, restart `python run.py`.
+
 Seed the admin account:
 
 ```powershell
@@ -114,7 +117,20 @@ celery -A celery_worker.celery worker --loglevel=info
 celery -A celery_worker.celery beat --loglevel=info
 ```
 
-Beat schedules deadline reminders every 15 minutes and the daily productivity report at 00:05 UTC.
+Beat schedules deadline reminders every 15 minutes and the daily productivity report at 00:05 UTC. Both jobs persist their output: reminders and the per-user report land in the notification inbox (`/notifications` view, unread badge in the sidebar), and the report is also readable at `GET /api/analytics/report/latest` with history at `/report/history`. On Windows run the worker with `--pool=solo`.
+
+## Stale dev database
+
+`AUTO_CREATE_DB` only creates missing tables — it never alters existing ones. After pulling model changes, a dev database from older code can cause `sqlite3.OperationalError: no such column: ...`. Repair it by dropping just the stale table (your projects and tasks are untouched), then restart the backend so the current schema is recreated:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -c "from app import create_app; app = create_app(); ctx = app.app_context(); ctx.push(); from app.extensions import db; from sqlalchemy import text; db.session.execute(text('DROP TABLE IF EXISTS notification')); db.session.commit(); db.create_all()"
+python run.py
+```
+
+(`flask shell` in this project has no `-c` flag, so the repair runs through `python -c` with an explicit app context instead.)
 
 ## Validation
 
@@ -142,5 +158,10 @@ npm run build
 | POST | `/api/tasks/:id/complete` | Owner |
 | GET | `/api/tasks/:id/activity` | Owner |
 | GET | `/api/analytics/me` | Authenticated |
+| GET | `/api/analytics/report/latest` | Owner, latest persisted daily report |
+| GET | `/api/analytics/report/history` | Owner, up to 30 persisted daily reports |
+| GET | `/api/notifications` | Owner, filterable with `unread_only` and `kind` |
+| POST | `/api/notifications/:id/read` | Owner |
+| POST | `/api/notifications/read-all` | Owner |
 | GET/PATCH/DELETE | `/api/admin/users`, `/api/admin/users/:id/block`, `/api/admin/users/:id` | `admin` only |
 | GET | `/api/analytics/admin` | `admin` only |
