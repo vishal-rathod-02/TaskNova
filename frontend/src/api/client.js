@@ -8,9 +8,17 @@ const apiClient = axios.create({
   },
 });
 
+const isRefreshRequest = (config) => config?.url?.includes("/auth/refresh");
+const isPublicAuthRequest = (config) =>
+  config?.url?.includes("/auth/login") || config?.url?.includes("/auth/register");
+
 apiClient.interceptors.request.use((config) => {
+  // Never overwrite the explicit refresh-token header on /auth/refresh.
+  if (isRefreshRequest(config)) {
+    return config;
+  }
   const authStore = useAuthStore();
-  if (authStore.accessToken) {
+  if (authStore.accessToken && !config.headers?.Authorization) {
     config.headers.Authorization = `Bearer ${authStore.accessToken}`;
   }
   return config;
@@ -20,12 +28,23 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const authStore = useAuthStore();
-    if (error.response?.status === 401 && authStore.refreshToken && !error.config?._retry) {
+    const originalRequest = error.config;
+
+    // The refresh call itself failed, or this is a public auth call:
+    // do not attempt another refresh, just force a clean logout.
+    if (isRefreshRequest(originalRequest) || isPublicAuthRequest(originalRequest)) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        authStore.logout();
+      }
+      return Promise.reject(error);
+    }
+
+    if (error.response?.status === 401 && authStore.refreshToken && !originalRequest?._retry) {
       try {
-        error.config._retry = true;
+        originalRequest._retry = true;
         await authStore.refreshAccessToken();
-        error.config.headers.Authorization = `Bearer ${authStore.accessToken}`;
-        return apiClient.request(error.config);
+        originalRequest.headers.Authorization = `Bearer ${authStore.accessToken}`;
+        return apiClient.request(originalRequest);
       } catch (refreshError) {
         authStore.logout();
       }
