@@ -1,45 +1,73 @@
-import os
+import json
+import logging
+from time import perf_counter
 
-from flask import Flask, jsonify, request
+from flask import Flask, g, jsonify, request
 
+from .admin import admin_bp
+from .analytics import analytics_bp
+from .auth import auth_bp
+from .celery_app import init_celery
 from .config import Config
 from .extensions import cors, db, init_redis, jwt, migrate
-from .routes import api
+from .models import ActivityLog, Project, Task, User
+from .projects import projects_bp
+from .tasks import tasks_bp
 
 
-def create_app():
+def create_app(config_override=None):
     app = Flask(__name__)
     app.config.from_object(Config)
+    if config_override:
+        app.config.update(config_override)
 
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
     cors.init_app(
         app,
-        resources={r"/*": {"origins": "*"}},
+        resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
     init_redis(app)
+    init_celery(app)
 
-    app.register_blueprint(api)
-    os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(projects_bp)
+    app.register_blueprint(tasks_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(analytics_bp)
 
     if app.config.get("AUTO_CREATE_DB", True):
         with app.app_context():
             db.create_all()
 
+    @app.before_request
+    def begin_request_timer():
+        g.request_started_at = perf_counter()
+
     @app.after_request
-    def add_cors_headers(response):
-        origin = request.headers.get("Origin")
-        if origin:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Vary"] = "Origin"
-        else:
-            response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    def log_request(response):
+        if request.path.startswith("/api/"):
+            app.logger.info(
+                json.dumps(
+                    {
+                        "event": "api_request",
+                        "method": request.method,
+                        "path": request.path,
+                        "status": response.status_code,
+                        "duration_ms": round((perf_counter() - g.get("request_started_at", perf_counter())) * 1000, 2),
+                    }
+                )
+            )
         return response
+
+    @app.errorhandler(404)
+    def not_found(error):
+        if request.path.startswith("/api/"):
+            return jsonify({"message": "Resource not found."}), 404
+        return error
 
     @app.get("/health")
     def health():
