@@ -1,49 +1,104 @@
 <script setup>
-import { onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
+import AppIcon from "../components/AppIcon.vue";
+import EmptyState from "../components/EmptyState.vue";
+import PageHeader from "../components/PageHeader.vue";
 import { useAnalyticsStore } from "../stores/analytics";
 import { useAuthStore } from "../stores/auth";
 
 const analyticsStore = useAnalyticsStore();
 const authStore = useAuthStore();
+const error = ref("");
 
-onMounted(async () => {
-  await analyticsStore.fetchStats();
-});
+const stats = computed(() => analyticsStore.stats || {});
+const trendMax = computed(() => Math.max(...(stats.value.completion_trend || []).map((item) => item.count), 1));
+const isEmpty = computed(() => !analyticsStore.loading && !authStore.isAdmin && stats.value.total_tasks === 0);
+
+const loadDashboard = async () => {
+  error.value = "";
+  try {
+    await analyticsStore.fetchStats(authStore.isAdmin);
+  } catch (requestError) {
+    error.value = requestError.response?.data?.message || "Unable to load dashboard data.";
+  }
+};
+
+onMounted(loadDashboard);
 </script>
 
 <template>
-  <div class="page-wrap">
-    <section class="panel title-row">
-      <div>
-        <h2 class="section-title">Productivity Dashboard</h2>
-        <p class="section-subtitle">Welcome back, {{ authStore.user?.full_name }}.</p>
-      </div>
-      <span class="chip">{{ authStore.user?.role }}</span>
+  <div class="page-shell">
+    <PageHeader
+      :title="authStore.isAdmin ? 'System overview' : `Good to see you, ${authStore.user?.full_name?.split(' ')[0] || 'there'}.`"
+      :description="authStore.isAdmin ? 'A concise read on accounts, project activity, and system-wide task health.' : 'A clear read on the work in front of you.'"
+    >
+      <template #actions>
+        <router-link v-if="!authStore.isAdmin" class="btn-primary gap-2" to="/tasks"><AppIcon name="plus" :size="16" />Create task</router-link>
+        <button class="btn-secondary gap-2" type="button" :disabled="analyticsStore.loading" @click="loadDashboard"><AppIcon name="refresh" :size="16" />{{ analyticsStore.loading ? "Refreshing..." : "Refresh" }}</button>
+      </template>
+    </PageHeader>
+    <p v-if="analyticsStore.stats" class="data-label mt-4">Updated from {{ analyticsStore.source === 'cache' ? 'cached snapshot' : 'live database' }}</p>
+
+    <p v-if="error" class="field-error mt-5" aria-live="polite">{{ error }}</p>
+    <p v-if="analyticsStore.loading && !analyticsStore.stats" class="mt-12 text-sm text-slate dark:text-[#9AA3B2]">Loading your current account of work...</p>
+
+    <section v-else-if="authStore.isAdmin" class="mt-10 grid border-t border-slate/20 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate/30">
+      <article class="metric-block border-r-0 px-0 sm:px-5 sm:first:pl-0 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
+        <p class="data-label">Active users</p><p class="metric-number">{{ stats.active_users || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">of {{ stats.total_users || 0 }} accounts</p>
+      </article>
+      <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
+        <p class="data-label">Projects</p><p class="metric-number">{{ stats.total_projects || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">system-wide</p>
+      </article>
+      <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
+        <p class="data-label">Overdue tasks</p><p class="metric-number text-ember dark:text-ember-dark">{{ stats.overdue_tasks || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">need attention</p>
+      </article>
+      <article class="metric-block px-0 sm:px-5 sm:last:pr-0">
+        <p class="data-label">Activity, 24h</p><p class="metric-number">{{ stats.activity_last_24h || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">recorded changes</p>
+      </article>
     </section>
 
-    <section class="grid grid-3">
-      <article class="panel">
-        <p class="section-subtitle">Total Tasks</p>
-        <h2 style="margin: 8px 0 0">{{ analyticsStore.stats?.total_tasks || 0 }}</h2>
-      </article>
-      <article class="panel">
-        <p class="section-subtitle">Completed</p>
-        <h2 style="margin: 8px 0 0">{{ analyticsStore.stats?.completed_tasks || 0 }}</h2>
-      </article>
-      <article class="panel">
-        <p class="section-subtitle">Overdue</p>
-        <h2 style="margin: 8px 0 0">{{ analyticsStore.stats?.overdue_tasks || 0 }}</h2>
-      </article>
-    </section>
+    <EmptyState
+      v-else-if="isEmpty"
+      class="mt-12"
+      title="No tasks yet"
+      description="Create your first project, then add the next piece of work you want to track."
+    >
+      <template #actions>
+        <router-link class="btn-primary gap-2" to="/projects"><AppIcon name="plus" :size="16" />Create your first project</router-link>
+      </template>
+    </EmptyState>
 
-    <section class="panel">
-      <h3 class="section-title">Status Breakdown</h3>
-      <div class="grid grid-3">
-        <div v-for="item in analyticsStore.statusBreakdown" :key="item.status" class="panel">
-          <strong style="text-transform: capitalize">{{ item.status }}</strong>
-          <p class="muted">{{ item.count }} tasks</p>
-        </div>
-      </div>
-    </section>
+    <template v-else-if="!authStore.isAdmin">
+      <section class="mt-10 grid border-t border-slate/20 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate/30">
+        <article class="metric-block border-r-0 px-0 sm:px-5 sm:first:pl-0 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Open tasks</p><p class="metric-number">{{ (stats.total_tasks || 0) - (stats.completed_tasks || 0) }}</p></article>
+        <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Completed</p><p class="metric-number text-ledger-green dark:text-ledger-greenDark">{{ stats.completed_tasks || 0 }}</p></article>
+        <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Overdue</p><p class="metric-number text-ember dark:text-ember-dark">{{ stats.overdue_tasks || 0 }}</p></article>
+        <article class="metric-block px-0 sm:px-5 sm:last:pr-0"><p class="data-label">Completion</p><p class="metric-number">{{ stats.completion_rate || 0 }}%</p></article>
+      </section>
+
+      <section class="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+        <article>
+          <h2 class="section-title">Completed over seven days</h2>
+          <p class="mt-2 body-copy">Each mark records a status change to done.</p>
+          <div class="mt-8 flex h-44 items-end gap-2 border-b border-slate/30 pb-1 dark:border-slate/40">
+            <div v-for="item in stats.completion_trend || []" :key="item.date" class="flex h-full flex-1 flex-col justify-end gap-2">
+              <span class="data-label text-center">{{ item.count }}</span>
+              <div class="min-h-[4px] bg-ink dark:bg-[#E7E9ED]" :style="{ height: `${Math.max((item.count / trendMax) * 100, 3)}%` }"></div>
+              <span class="data-label text-center">{{ new Date(`${item.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }) }}</span>
+            </div>
+          </div>
+        </article>
+        <article>
+          <h2 class="section-title">Status account</h2>
+          <div class="mt-5 border-t border-slate/20 dark:border-slate/30">
+            <div v-for="item in stats.status_breakdown || []" :key="item.label" class="flex items-center justify-between border-b border-slate/20 py-4 dark:border-slate/30"><span class="text-sm capitalize text-ink dark:text-[#E7E9ED]">{{ item.label.replace('_', ' ') }}</span><span class="data-label">{{ item.count }}</span></div>
+          </div>
+          <h2 class="section-title mt-8">Priority account</h2>
+          <div class="mt-5 border-t border-slate/20 dark:border-slate/30">
+            <div v-for="item in stats.priority_breakdown || []" :key="item.label" class="flex items-center justify-between border-b border-slate/20 py-4 dark:border-slate/30"><span class="text-sm capitalize text-ink dark:text-[#E7E9ED]">{{ item.label }}</span><span class="data-label">{{ item.count }}</span></div>
+          </div>
+        </article>
+      </section>
+    </template>
   </div>
 </template>
