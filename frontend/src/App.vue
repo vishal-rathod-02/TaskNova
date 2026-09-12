@@ -1,22 +1,30 @@
 <script setup>
-import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, watch } from "vue";
+import { useRoute } from "vue-router";
+import AppErrorBoundary from "./components/AppErrorBoundary.vue";
 import AppIcon from "./components/AppIcon.vue";
 import ToastNotifications from "./components/ToastNotifications.vue";
+import UserMenu from "./components/UserMenu.vue";
 import { useTheme } from "./composables/useTheme";
 import { useAuthStore } from "./stores/auth";
+import { useNotificationStore } from "./stores/notifications";
 
 const route = useRoute();
-const router = useRouter();
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 const { isDark, toggleTheme } = useTheme();
 
 const showShell = computed(() => authStore.isAuthenticated && !["login", "register"].includes(route.name));
 
-const logout = () => {
-  authStore.logout();
-  router.push({ name: "login" });
-};
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      notificationStore.fetchNotifications().catch(() => {});
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -28,25 +36,38 @@ const logout = () => {
         <router-link to="/" class="nav-link gap-2"><AppIcon name="dashboard" :size="16" />Dashboard</router-link>
         <router-link to="/projects" class="nav-link gap-2"><AppIcon name="projects" :size="16" />Projects</router-link>
         <router-link to="/tasks" class="nav-link gap-2"><AppIcon name="tasks" :size="16" />Tasks</router-link>
+        <router-link to="/notifications" class="nav-link gap-2">
+          <AppIcon name="bell" :size="16" />Inbox
+          <span v-if="notificationStore.unreadCount" class="data-label ml-auto border border-ember/40 px-1.5 py-0.5 text-ember dark:border-ember-dark/50 dark:text-ember-dark">{{ notificationStore.unreadCount }}</span>
+        </router-link>
         <router-link v-if="authStore.isAdmin" to="/admin" class="nav-link gap-2"><AppIcon name="admin" :size="16" />Admin</router-link>
       </nav>
-      <div class="mt-auto border-t border-slate/20 pt-5 dark:border-slate/30">
-        <p class="text-sm font-medium text-ink dark:text-[#E7E9ED]">{{ authStore.user?.full_name || "User" }}</p>
-        <p class="mt-1 data-label">{{ authStore.user?.role || "user" }}</p>
-        <button class="mt-5 min-h-11 text-sm font-medium text-slate underline decoration-slate/50 underline-offset-4 hover:text-ink dark:text-[#9AA3B2] dark:hover:text-[#E7E9ED]" type="button" @click="toggleTheme">{{ isDark ? "Use daylight" : "Use night shift" }}</button>
-        <button class="mt-2 block min-h-11 text-sm font-medium text-ember hover:underline dark:text-ember-dark" type="button" @click="logout">Sign out</button>
+      <div class="mt-auto border-t border-slate/20 pt-3 dark:border-slate/30">
+        <UserMenu :is-dark="isDark" @toggle-theme="toggleTheme" />
       </div>
     </aside>
+    <div v-if="showShell" class="sticky top-0 z-30 flex min-h-11 items-center gap-2 border-b border-slate/20 bg-white px-4 py-2 dark:border-slate/30 dark:bg-night-surface md:hidden">
+      <router-link to="/" class="font-display text-lg font-semibold leading-6 text-ink dark:text-[#E7E9ED]">TaskNova</router-link>
+      <span class="ml-auto flex items-center gap-1">
+        <router-link to="/notifications" class="relative grid min-h-11 min-w-11 place-items-center px-2 text-slate hover:text-ink dark:text-[#9AA3B2] dark:hover:text-[#E7E9ED]" aria-label="Notification inbox">
+          <AppIcon name="bell" :size="20" />
+          <span v-if="notificationStore.unreadCount" class="absolute right-0.5 top-1 grid min-h-5 min-w-5 place-items-center bg-ember px-1 font-mono text-[11px] font-medium text-white dark:bg-ember-dark dark:text-ink">{{ notificationStore.unreadCount }}</span>
+        </router-link>
+        <button class="min-h-11 px-2 text-xs font-medium text-slate hover:text-ink dark:text-[#9AA3B2] dark:hover:text-[#E7E9ED]" type="button" @click="toggleTheme">{{ isDark ? "Daylight" : "Night shift" }}</button>
+      </span>
+    </div>
     <main :class="showShell ? 'pb-20 md:pl-64 md:pb-0' : ''">
-      <router-view />
+      <AppErrorBoundary :key="route.fullPath">
+        <router-view />
+      </AppErrorBoundary>
     </main>
-    <nav v-if="showShell" class="fixed inset-x-0 bottom-0 z-40 grid border-t border-slate/20 bg-white px-4 dark:border-slate/30 dark:bg-night-surface md:hidden" :class="authStore.isAdmin ? 'grid-cols-4' : 'grid-cols-3'" aria-label="Mobile navigation">
+    <nav v-if="showShell" class="mobile-nav fixed inset-x-0 bottom-0 z-40 grid border-t border-slate/20 bg-white px-2 dark:border-slate/30 dark:bg-night-surface md:hidden" :class="authStore.isAdmin ? 'grid-cols-5' : 'grid-cols-4'" aria-label="Mobile navigation">
       <router-link to="/" class="nav-link justify-center gap-1"><AppIcon name="dashboard" :size="16" />Dashboard</router-link>
       <router-link to="/projects" class="nav-link justify-center gap-1"><AppIcon name="projects" :size="16" />Projects</router-link>
       <router-link to="/tasks" class="nav-link justify-center gap-1"><AppIcon name="tasks" :size="16" />Tasks</router-link>
+      <router-link to="/notifications" class="nav-link justify-center gap-1"><AppIcon name="bell" :size="16" />Inbox</router-link>
       <router-link v-if="authStore.isAdmin" to="/admin" class="nav-link justify-center gap-1"><AppIcon name="admin" :size="16" />Admin</router-link>
     </nav>
-    <button v-if="showShell" class="fixed right-4 top-4 z-30 min-h-11 border border-slate/40 bg-white px-3 text-sm font-medium text-ink dark:border-slate/50 dark:bg-night-surface dark:text-[#E7E9ED] md:hidden" type="button" @click="toggleTheme">{{ isDark ? "Daylight" : "Night shift" }}</button>
     <ToastNotifications />
   </div>
 </template>

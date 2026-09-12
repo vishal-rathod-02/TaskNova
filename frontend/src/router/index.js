@@ -7,6 +7,8 @@ import DashboardView from "../views/DashboardView.vue";
 import ProjectsView from "../views/ProjectsView.vue";
 import TasksView from "../views/TasksView.vue";
 import AdminView from "../views/AdminView.vue";
+import NotificationsView from "../views/NotificationsView.vue";
+import NotFoundView from "../views/NotFoundView.vue";
 
 const routes = [
   { path: "/login", name: "login", component: LoginView },
@@ -34,6 +36,17 @@ const routes = [
     name: "admin",
     component: AdminView,
     meta: { requiresAuth: true, requiresAdmin: true },
+  },
+  {
+    path: "/notifications",
+    name: "notifications",
+    component: NotificationsView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "not-found",
+    component: NotFoundView,
   },
 ];
 

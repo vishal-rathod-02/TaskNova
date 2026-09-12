@@ -138,6 +138,14 @@
     @apply border-amber text-ink dark:text-[#E7E9ED];
   }
 
+  .mobile-nav {
+    @apply overflow-x-auto;
+  }
+
+  .mobile-nav .nav-link {
+    @apply min-w-0 flex-1 justify-center whitespace-nowrap px-1 text-xs;
+  }
+
   .metric-block {
     @apply border-b border-slate/20 py-5 last:border-0 dark:border-slate/30;
   }
