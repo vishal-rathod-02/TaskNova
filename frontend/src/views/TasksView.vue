@@ -64,11 +64,23 @@ const clearFilters = () => {
 
 const resetForm = () => Object.assign(form, { title: "", description: "", project_id: filters.project_id || "", priority: "medium", status: "todo", due_date: "" });
 
+// datetime-local carries no zone, so normalize to a UTC instant before POST:
+// otherwise the server would compare a local wall-clock against its UTC clock.
+const toUtcIso = (localInput) => (localInput ? new Date(localInput).toISOString() : null);
+
+// API instants (with zone) back to the wall-clock the datetime-local input needs.
+const toLocalInput = (iso) => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const createTask = async () => {
   error.value = "";
   formErrors.value = {};
   try {
-    await taskStore.createTask({ ...form, project_id: Number(form.project_id), due_date: form.due_date || null });
+    await taskStore.createTask({ ...form, project_id: Number(form.project_id), due_date: toUtcIso(form.due_date) });
     resetForm();
     creating.value = false;
     await loadTasks();
@@ -80,7 +92,7 @@ const createTask = async () => {
 
 const startEdit = (task) => {
   editingId.value = task.id;
-  Object.assign(editForm, { title: task.title, description: task.description || "", priority: task.priority, status: task.status, due_date: task.due_date?.slice(0, 16) || "" });
+  Object.assign(editForm, { title: task.title, description: task.description || "", priority: task.priority, status: task.status, due_date: toLocalInput(task.due_date) });
   formErrors.value = {};
   error.value = "";
 };
@@ -89,7 +101,7 @@ const saveTask = async (taskId) => {
   error.value = "";
   formErrors.value = {};
   try {
-    await taskStore.updateTask(taskId, { ...editForm, due_date: editForm.due_date || null });
+    await taskStore.updateTask(taskId, { ...editForm, due_date: toUtcIso(editForm.due_date) });
     editingId.value = null;
     showToast("Task updated.");
   } catch (requestError) {
