@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import apiClient from "../api/client";
+import { fetchCurrentUser, loginUser, refreshAccessToken, registerUser } from "../services/auth";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -13,10 +13,10 @@ export const useAuthStore = defineStore("auth", {
   },
   actions: {
     async register(payload) {
-      await apiClient.post("/auth/register", payload);
+      await registerUser(payload);
     },
     async login(payload) {
-      const { data } = await apiClient.post("/auth/login", payload);
+      const { data } = await loginUser(payload);
       this.accessToken = data.access_token;
       this.refreshToken = data.refresh_token;
       this.user = data.user;
@@ -25,20 +25,12 @@ export const useAuthStore = defineStore("auth", {
     },
     async fetchCurrentUser() {
       if (!this.accessToken) return;
-      const { data } = await apiClient.get("/me");
+      const { data } = await fetchCurrentUser();
       this.user = data.user;
     },
     async refreshAccessToken() {
       if (!this.refreshToken) throw new Error("No refresh token");
-      const { data } = await apiClient.post(
-        "/auth/refresh",
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${this.refreshToken}`,
-          },
-        }
-      );
+      const { data } = await refreshAccessToken(this.refreshToken);
       this.accessToken = data.access_token;
       localStorage.setItem("access_token", this.accessToken);
     },

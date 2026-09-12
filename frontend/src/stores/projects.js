@@ -1,5 +1,10 @@
 import { defineStore } from "pinia";
-import apiClient from "../api/client";
+import {
+  createProject as createProjectRequest,
+  deleteProject as deleteProjectRequest,
+  listProjects,
+  updateProject as updateProjectRequest,
+} from "../services/projects";
 
 export const useProjectStore = defineStore("projects", {
   state: () => ({
@@ -10,18 +15,22 @@ export const useProjectStore = defineStore("projects", {
     async fetchProjects() {
       this.loading = true;
       try {
-        const { data } = await apiClient.get("/projects");
+        const { data } = await listProjects();
         this.items = data.projects;
       } finally {
         this.loading = false;
       }
     },
     async createProject(payload) {
-      const { data } = await apiClient.post("/projects", payload);
+      const { data } = await createProjectRequest(payload);
       this.items.unshift(data.project);
     },
+    async updateProject(id, payload) {
+      const { data } = await updateProjectRequest(id, payload);
+      this.items = this.items.map((project) => (project.id === id ? data.project : project));
+    },
     async deleteProject(id) {
-      await apiClient.delete(`/projects/${id}`);
+      await deleteProjectRequest(id);
       this.items = this.items.filter((project) => project.id !== id);
     },
   },
