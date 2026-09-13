@@ -1,77 +1,151 @@
-# TaskNova
+<p align="center">
+  <img src="frontend/public/TaskNova.svg" alt="TaskNova Logo" width="320"/>
+</p>
 
-TaskNova is a smart task and productivity management system for individuals and small teams. Flask serves a JSON API; Vue 3 + Tailwind provides the Daylight Ledger SPA.
+<p align="center">
+  <strong>Modern Full-Stack Academic Task & Workplace Productivity Suite</strong>
+</p>
 
-## User roles
+<p align="center">
+  <a href="https://task-nova-app.vercel.app"><img src="https://img.shields.io/badge/Live%20Demo-task--nova--app.vercel.app-6366f1?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"></a>
+  <a href="https://tasknova-api-odp5.onrender.com/health"><img src="https://img.shields.io/badge/API%20Status-Live%20on%20Render-10b981?style=for-the-badge&logo=render&logoColor=white" alt="Render API"></a>
+  <a href="https://github.com/vishal-rathod-02/TaskNova"><img src="https://img.shields.io/badge/Version-v1.0.0-blue?style=for-the-badge&logo=github" alt="Version 1.0"></a>
+</p>
 
-There are 2 roles (`backend/app/models/user.py:14`, enforced by `role_required` in `backend/app/utils/auth.py:24`):
+<p align="center">
+  <img src="https://img.shields.io/badge/Vue%203-3.5-42b883?style=flat-square&logo=vuedotjs&logoColor=white" alt="Vue 3">
+  <img src="https://img.shields.io/badge/Vite-6.2-646cff?style=flat-square&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/TailwindCSS-3.4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white" alt="TailwindCSS">
+  <img src="https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white" alt="Flask">
+  <img src="https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Redis-7.0-dc382d?style=flat-square&logo=redis&logoColor=white" alt="Redis">
+  <img src="https://img.shields.io/badge/Celery-5.3-37814a?style=flat-square&logo=celery&logoColor=white" alt="Celery">
+  <img src="https://img.shields.io/badge/JWT-Authentication-orange?style=flat-square&logo=jsonwebtokens&logoColor=white" alt="JWT">
+</p>
 
-| Role | How it is created | What it can do |
-| --- | --- | --- |
-| `user` | Default for every `POST /api/auth/register` | Own projects/tasks, personal dashboard, task activity |
-| `admin` | Seeded via `flask --app run.py seed`, never via public register | Everything above system-wide, plus `GET/PATCH/DELETE /api/admin/users` and `/api/analytics/admin` |
+---
 
-Admins cannot be blocked or deleted through the admin API. Blocked users cannot log in.
+## 🌐 Live Production Links
 
-## Repository layout
+* 🖥️ **Live Web Application**: [https://task-nova-app.vercel.app](https://task-nova-app.vercel.app)
+* ⚡ **Production REST API**: [https://tasknova-api-odp5.onrender.com](https://tasknova-api-odp5.onrender.com)
+* 📦 **GitHub Repository**: [https://github.com/vishal-rathod-02/TaskNova](https://github.com/vishal-rathod-02/TaskNova)
+
+---
+
+## 📖 Overview
+
+**TaskNova** is a modern, high-performance academic productivity workspace engineered with **Vue 3 (Composition API), Vite, TailwindCSS, Python Flask, PostgreSQL, Redis, and Celery**. 
+
+Built specifically for students, researchers, and educators, TaskNova bridges the gap between course syllabi, daily task management, sprint-based study habits, and automated deadline tracking in a unified daylight/night-shift interface.
+
+---
+
+## ✨ Key Features & Architecture
+
+### 🎓 1. Academic Courses & Syllabi Management
+* Organize coursework by custom course codes, credit weights, instructor details, and customizable color themes.
+* Track real-time progress percentages, active assignment workloads, and historical completion velocities.
+
+### 📋 2. Dual Task Ledger & Interactive Kanban
+* **Task Ledger**: Filterable table with priority badges, multi-course selectors, and inline quick-actions.
+* **Kanban Board**: Drag-and-drop columns (`To Do`, `In Progress`, `Under Review`, `Completed`) with real-time state synchronization.
+* **Subtasks & Notes**: Nested checklists with progress meters and markdown notes.
+
+### 📅 3. Interactive Academic Calendar (`/calendar`)
+* Dedicated monthly academic schedule view with status rings and priority badges.
+* Schedule tasks directly onto any calendar date with a single click.
+
+### ⏱️ 4. Pomodoro Study Focus Timer
+* 3 study modes: **25-min Study Focus**, **5-min Short Break**, and **15-min Long Break**.
+* Micro-interactions: Live ticking countdown pills on mobile headers, amber warning states for the final 3 minutes, and pulsing rose alerts for the final 60-second sprint.
+
+### 📊 5. Study Activity Heatmap & Analytics
+* **12-Week Sunday-Aligned Heatmap**: GitHub-style activity rings tracking daily completions with active day inspection.
+* **Animated Velocity Charts**: Interactive weekly output statistics and productivity breakdown.
+
+### 📑 6. Print-Perfect Academic PDF & ICS/CSV Export
+* **Isolated PDF Ledger Generator**: Clean print layout with university metadata headers, assignment checklists `[ ]`, and zero website chrome clutter.
+* **Universal Calendar Export**: Export directly to `.ICS` (Google/Apple Calendar) and `.CSV`.
+
+### 🔔 7. Automated Reminders & Celery Worker
+* Asynchronous 24-hour deadline scanner and daily productivity digest engine.
+* Automatic in-app notification center with real-time unread badges.
+
+### 🔐 8. Dual-Role RBAC & System Administration
+* **JWT Cryptographic Auth**: 15-minute access tokens + 7-day refresh tokens with PBKDF2 password hashing and rate limiting.
+* **Admin User Directory**: Administrator portal to manage accounts, inspect workloads, and toggle account access with self-deletion safeguards.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | Vue 3 (Composition API), Vite, Pinia, Vue Router, TailwindCSS, Axios |
+| **Backend API** | Python 3.11+, Flask REST API, Flask-SQLAlchemy, Flask-JWT-Extended, Flask-Cors |
+| **WSGI Server** | Gunicorn (2 workers, 4 threads, asynchronous timeout control) |
+| **Database** | PostgreSQL (Production) / SQLite (Local Dev) |
+| **Caching & Message Broker** | Redis & Celery (Background task queues & scheduled beat worker) |
+| **Deployment & Hosting** | Vercel (Frontend CDN), Render (Web API & Postgres), Upstash (Redis), Docker Compose |
+
+---
+
+## 📁 Repository Structure
 
 ```text
 TaskNova/
-  README.md
-  backend/
-    run.py
-    celery_worker.py
-    requirements.txt
-    .env.example
-    tests/
-    app/
-      __init__.py
-      config.py
-      extensions.py
-      celery_app.py
-      auth/
-      projects/
-      tasks/
-      admin/
-      analytics/
-      notifications/ # inbox API for persisted job output
-      tasks_jobs/
-      models/
-      utils/
-  frontend/
-    index.html
-    vite.config.js
-    tailwind.config.cjs
-    postcss.config.cjs
-    .env.example
-    src/
-      main.js
-      style.css
-      router/
-      api/client.js
-      services/      # auth, projects, tasks, admin, analytics, notifications
-      stores/        # auth, projects, tasks, analytics, admin, notifications
-      components/    # PageHeader, EmptyState, FormField, TaskLedgerRow, AppIcon, ToastNotifications, UserMenu, AppErrorBoundary
-      composables/   # toast, useTheme
-      views/         # Login, Register, Dashboard, Projects, Tasks, Admin, Notifications, NotFound
+├── docker-compose.yml              # Turnkey 1-command Docker production stack
+├── README.md                       # Documentation & deployment guide
+├── backend/
+│   ├── run.py                      # Local application entrypoint & CLI commands
+│   ├── celery_worker.py            # Celery worker process entrypoint
+│   ├── requirements.txt            # Python production dependencies (includes gunicorn)
+│   ├── Dockerfile                  # Production container definition for Flask
+│   ├── Procfile                    # Render / Railway process definitions
+│   ├── .env.example                # Backend environment configuration template
+│   ├── app/
+│   │   ├── __init__.py             # Flask app factory, CORS init, admin auto-bootstrapper
+│   │   ├── config.py               # Dynamic settings & database URL normalizer
+│   │   ├── celery_app.py           # Celery beat schedules & task configuration
+│   │   ├── commands.py             # CLI commands (flask seed, flask run-jobs)
+│   │   ├── auth/                   # JWT registration, login, and token refresh
+│   │   ├── projects/               # Course & syllabus management endpoints
+│   │   ├── tasks/                  # Task ledger, Kanban, and subtask routes
+│   │   ├── admin/                  # Admin user directory, block & delete routes
+│   │   ├── analytics/              # Productivity metrics and report history
+│   │   ├── notifications/          # In-app notifications & cron trigger endpoints
+│   │   └── tasks_jobs/             # Asynchronous Celery reminder and digest tasks
+│   └── tests/                      # Automated pytest API test suite
+└── frontend/
+    ├── index.html                  # HTML5 SPA entrypoint with SVG favicon
+    ├── vite.config.js              # Vite configuration
+    ├── vercel.json                 # SPA routing rewrites for Vercel
+    ├── tailwind.config.cjs         # Design tokens & color system
+    ├── public/
+    │   ├── favicon.svg             # High-definition vector mortarboard & star favicon
+    │   ├── TaskNova.svg            # Official brand presentation graphic
+    │   └── _redirects              # SPA rewrite rule for Netlify / Render Static
+    └── src/
+        ├── App.vue                 # Master shell (Desktop sidebar, mobile nav, user menu)
+        ├── main.js                 # App initialization & Pinia store setup
+        ├── style.css               # Design system, themes & print stylesheet
+        ├── api/client.js           # Axios interceptors & auto-prefixing baseURL
+        ├── components/             # Reusable UI components & modals
+        ├── stores/                 # Pinia state stores (auth, tasks, timer, notifications)
+        └── views/                  # Route views (Dashboard, Tasks, Calendar, Admin, etc.)
 ```
 
-Only source is committed. Local artifacts stay untracked via `.gitignore`:
+---
 
-- `frontend/node_modules/`, `frontend/dist/` — reinstall/rebuild with npm
-- `backend/.venv/`, `__pycache__/`, `.pytest_cache/`, `backend/instance/`, `backend/uploads/`, `backend/celerybeat-schedule*`, `*.db`
-- Root and service `.env` files — copy from `.env.example`
+## ⚡ Quick Start: Local Development
 
-`frontend/dist/` is a rebuildable artifact and is not kept in the workspace.
+### Prerequisites
+* **Python**: 3.11+
+* **Node.js**: 20+
+* **Redis** (Optional): Local Redis or Upstash
 
-## Prerequisites
-
-- Python 3.11+
-- Node.js 20+
-- Redis optional; API and UI work without it, caching/reminders degrade gracefully
-
-## Backend setup
-
+### 1. Backend Setup
 ```powershell
 cd backend
 python -m venv .venv
@@ -80,88 +154,85 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 python run.py
 ```
+* API Server: `http://127.0.0.1:5001`
+* Health Check: `http://127.0.0.1:5001/health`
 
-API: `http://127.0.0.1:5001`, health: `http://127.0.0.1:5001/health`.
-
-Configure `backend/.env` from `.env.example`: `SECRET_KEY`, `JWT_SECRET_KEY`, `DATABASE_URL`, `REDIS_URL`, `CORS_ORIGINS`, token TTLs, dashboard TTLs, `REMINDER_WINDOW_HOURS`, `AUTO_CREATE_DB`.
-
-`CORS_ORIGINS` must list each frontend origin exactly, with no trailing slash — e.g. `http://localhost:5173,http://127.0.0.1:5173`. A missing or slashed entry makes the browser block API calls with `No 'Access-Control-Allow-Origin' header`. After changing it, or after any backend code change, restart `python run.py`.
-
-Seed the admin account:
-
-```powershell
-flask --app run.py seed
-```
-
-Dev admin: `admin@tasknova.com` / `admin123`. Change it outside local development.
-
-## Frontend setup
-
+### 2. Frontend Setup
 ```powershell
 cd frontend
 npm install
 Copy-Item .env.example .env
 npm run dev
 ```
+* Frontend SPA: `http://localhost:5173`
 
-SPA: `http://localhost:5173`. `VITE_API_BASE_URL` defaults to `http://127.0.0.1:5001/api`.
+---
 
-Sign in as admin with the seeded credentials; the `Admin` navigation appears only for `role === "admin"`.
+## 🐳 Turnkey Docker Deployment
 
-## Optional Redis and Celery
+To launch the entire stack with a single command:
 
-```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-celery -A celery_worker.celery worker --loglevel=info
-celery -A celery_worker.celery beat --loglevel=info
+```bash
+# Clone the repository
+git clone https://github.com/vishal-rathod-02/TaskNova.git
+cd TaskNova
+
+# Start all containers (Postgres, Redis, Flask API, Celery Worker, Celery Beat, Vue Frontend)
+docker compose up -d --build
+
+# Open in browser
+http://localhost
 ```
 
-Beat schedules deadline reminders every 15 minutes and the daily productivity report at 00:05 UTC. Both jobs persist their output: reminders and the per-user report land in the notification inbox (`/notifications` view, unread badge in the sidebar), and the report is also readable at `GET /api/analytics/report/latest` with history at `/report/history`. On Windows run the worker with `--pool=solo`.
+---
 
-## Stale dev database
+## 🔒 Security & Roles
 
-`AUTO_CREATE_DB` only creates missing tables — it never alters existing ones. After pulling model changes, a dev database from older code can cause `sqlite3.OperationalError: no such column: ...`. Repair it by dropping just the stale table (your projects and tasks are untouched), then restart the backend so the current schema is recreated:
+TaskNova implements **Zero-Trust Role-Based Access Control (RBAC)**:
+
+| Role | Creation | Permissions |
+| :--- | :--- | :--- |
+| `user` | Default on public registration (`/api/auth/register`) | Manage personal courses, task ledger, focus timer, and notifications. |
+| `admin` | Auto-bootstrapped via `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars | All user capabilities + access to Admin Directory (`/admin`), account management, and system analytics. |
+
+---
+
+## 📡 API Reference Overview
+
+| Method | Endpoint | Access | Purpose |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Public | Register new student user |
+| `POST` | `/api/auth/login` | Public | Sign in and obtain JWT access + refresh tokens |
+| `POST` | `/api/auth/refresh` | Refresh Token | Refresh access token |
+| `GET` | `/api/auth/me` | Authenticated | Fetch current profile |
+| `GET/POST` | `/api/projects` | Authenticated | List or create courses |
+| `GET/PUT/DELETE` | `/api/projects/:id` | Owner | Manage course details |
+| `GET/POST` | `/api/tasks` | Authenticated | List with filters (status, priority, due date) or create task |
+| `GET/PUT/DELETE` | `/api/tasks/:id` | Owner | Manage task |
+| `POST` | `/api/tasks/:id/complete` | Owner | Quick complete task |
+| `GET` | `/api/analytics/me` | Authenticated | Fetch heatmap, weekly velocity, and metrics |
+| `GET` | `/api/notifications` | Authenticated | Fetch inbox notifications with unread counts |
+| `GET/POST` | `/api/notifications/trigger-jobs` | Public/Cron | Execute reminder scan and daily reports |
+| `GET/PATCH/DELETE` | `/api/admin/users` | Admin Only | User directory, block/unblock, and delete accounts |
+
+---
+
+## 🧪 Testing & Build Verification
 
 ```powershell
+# Run backend pytest suite
 cd backend
-.\.venv\Scripts\Activate.ps1
-python -c "from app import create_app; app = create_app(); ctx = app.app_context(); ctx.push(); from app.extensions import db; from sqlalchemy import text; db.session.execute(text('DROP TABLE IF EXISTS notification')); db.session.commit(); db.create_all()"
-python run.py
-```
+python -m pytest
 
-(`flask shell` in this project has no `-c` flag, so the repair runs through `python -c` with an explicit app context instead.)
-
-## Validation
-
-```powershell
-cd backend
-python -m pytest -q
-
+# Run frontend production build
 cd ..\frontend
 npm run build
 ```
 
-## Core API
+---
 
-| Method | Path | Access |
-| --- | --- | --- |
-| POST | `/api/auth/register` | Public, always creates `user` |
-| POST | `/api/auth/login` | Public |
-| POST | `/api/auth/refresh` | Refresh token |
-| GET | `/api/auth/me` | Authenticated |
-| GET/POST | `/api/projects` | Owner |
-| GET/PUT/DELETE | `/api/projects/:id` | Owner |
-| GET/POST | `/api/projects/:id/tasks` | Owner |
-| GET/POST | `/api/tasks` | Owner, filterable + paginated |
-| GET/PUT/DELETE | `/api/tasks/:id` | Owner |
-| POST | `/api/tasks/:id/complete` | Owner |
-| GET | `/api/tasks/:id/activity` | Owner |
-| GET | `/api/analytics/me` | Authenticated |
-| GET | `/api/analytics/report/latest` | Owner, latest persisted daily report |
-| GET | `/api/analytics/report/history` | Owner, up to 30 persisted daily reports |
-| GET | `/api/notifications` | Owner, filterable with `unread_only` and `kind` |
-| POST | `/api/notifications/:id/read` | Owner |
-| POST | `/api/notifications/read-all` | Owner |
-| GET/PATCH/DELETE | `/api/admin/users`, `/api/admin/users/:id/block`, `/api/admin/users/:id` | `admin` only |
-| GET | `/api/analytics/admin` | `admin` only |
+## 👤 Author & Acknowledgements
+
+* **Developer**: [Vishal Rathod](https://github.com/vishal-rathod-02)
+* **Portfolio**: [vishalrathod.tech](https://vishal-rathod-portfolio.vercel.app/)
+* **License**: MIT
