@@ -29,6 +29,18 @@ def _bootstrap_admin(app):
 
     try:
         with app.app_context():
+            # If user has configured their own private admin email, purge the public default 'admin@tasknova.com'
+            if admin_email != "admin@tasknova.com":
+                legacy_admin = User.query.filter_by(email="admin@tasknova.com").first()
+                if legacy_admin:
+                    Project.query.filter_by(owner_id=legacy_admin.id).delete(synchronize_session=False)
+                    Notification.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
+                    DailyReport.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
+                    ActivityLog.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
+                    db.session.delete(legacy_admin)
+                    db.session.commit()
+                    app.logger.info("Purged default public admin: admin@tasknova.com")
+
             admin = User.query.filter_by(email=admin_email).first()
             if not admin:
                 admin = User(full_name=admin_name, email=admin_email, role="admin")

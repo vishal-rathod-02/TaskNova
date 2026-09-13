@@ -8,9 +8,11 @@ import PageHeader from "../components/PageHeader.vue";
 import SkeletonLoader from "../components/SkeletonLoader.vue";
 import { showToast } from "../composables/toast";
 import { useAdminStore } from "../stores/admin";
+import { useAuthStore } from "../stores/auth";
 import { withMinLoading } from "../utils/async";
 
 const adminStore = useAdminStore();
+const authStore = useAuthStore();
 const error = ref("");
 const searchQuery = ref("");
 const roleFilter = ref("all");
@@ -199,7 +201,7 @@ onMounted(loadUsers);
 
           <!-- Actions -->
           <div class="flex items-center justify-end gap-2">
-            <template v-if="user.role !== 'admin'">
+            <template v-if="user.id !== authStore.user?.id">
               <button
                 type="button"
                 class="rounded-xl border px-3 py-1 text-xs font-bold transition-all"
@@ -218,8 +220,8 @@ onMounted(loadUsers);
                 <AppIcon name="trash" :size="14" />
               </button>
             </template>
-            <span v-else class="font-mono text-xs font-semibold text-slate-400">
-              Protected Root
+            <span v-else class="rounded-lg bg-brand-50 dark:bg-brand-950/60 px-2.5 py-1 font-mono text-[11px] font-bold text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-900">
+              You (Active)
             </span>
           </div>
         </article>
