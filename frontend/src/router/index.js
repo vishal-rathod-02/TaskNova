@@ -7,6 +7,7 @@ import DashboardView from "../views/DashboardView.vue";
 import ProjectsView from "../views/ProjectsView.vue";
 import TasksView from "../views/TasksView.vue";
 import AdminView from "../views/AdminView.vue";
+import CalendarView from "../views/CalendarView.vue";
 import NotificationsView from "../views/NotificationsView.vue";
 import NotFoundView from "../views/NotFoundView.vue";
 
@@ -29,6 +30,12 @@ const routes = [
     path: "/tasks",
     name: "tasks",
     component: TasksView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/calendar",
+    name: "calendar",
+    component: CalendarView,
     meta: { requiresAuth: true },
   },
   {

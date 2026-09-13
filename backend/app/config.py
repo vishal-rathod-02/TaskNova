@@ -14,9 +14,16 @@ def _origins():
     return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip().rstrip("/")]
 
 
+def _database_url():
+    url = os.getenv("DATABASE_URL", "sqlite:///tasknova.db")
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///tasknova.db")
+    SQLALCHEMY_DATABASE_URI = _database_url()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 

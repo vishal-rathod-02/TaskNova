@@ -1,32 +1,81 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import AnimatedBarChart from "../components/AnimatedBarChart.vue";
+import AnimatedNumber from "../components/AnimatedNumber.vue";
 import AppIcon from "../components/AppIcon.vue";
+import AppLoader from "../components/AppLoader.vue";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
+import SkeletonLoader from "../components/SkeletonLoader.vue";
+import StudyHeatmap from "../components/StudyHeatmap.vue";
+import TaskModal from "../components/TaskModal.vue";
+import { showToast } from "../composables/toast";
 import { useAnalyticsStore } from "../stores/analytics";
 import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notifications";
+import { useProjectStore } from "../stores/projects";
+import { useTaskStore } from "../stores/tasks";
+import { withMinLoading } from "../utils/async";
 
 const analyticsStore = useAnalyticsStore();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
+const projectStore = useProjectStore();
+const taskStore = useTaskStore();
+
 const error = ref("");
+const isCreateTaskOpen = ref(false);
+const creatingTaskLoading = ref(false);
+const taskFormErrors = ref({});
 
 const stats = computed(() => analyticsStore.stats || {});
-const trendMax = computed(() => Math.max(...(stats.value.completion_trend || []).map((item) => item.count), 1));
 const isEmpty = computed(() => !analyticsStore.loading && !authStore.isAdmin && stats.value.total_tasks === 0);
 const report = computed(() => notificationStore.latestReport);
+
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  const name = authStore.user?.full_name?.split(" ")[0] || "Student";
+  if (hour < 12) return `Good morning, ${name} 🎓`;
+  if (hour < 18) return `Good afternoon, ${name} 🎓`;
+  return `Good evening, ${name} 🎓`;
+});
 
 const loadDashboard = async () => {
   error.value = "";
   try {
-    await Promise.all([
-      analyticsStore.fetchStats(authStore.isAdmin),
-      authStore.isAdmin ? Promise.resolve() : notificationStore.fetchNotifications(),
-      authStore.isAdmin ? Promise.resolve() : notificationStore.fetchLatestReport().catch(() => {}),
-    ]);
+    await withMinLoading(
+      Promise.all([
+        analyticsStore.fetchStats(authStore.isAdmin),
+        authStore.isAdmin ? Promise.resolve() : notificationStore.fetchNotifications(),
+        authStore.isAdmin ? Promise.resolve() : notificationStore.fetchLatestReport().catch(() => {}),
+        projectStore.fetchProjects().catch(() => {}),
+        authStore.isAdmin ? Promise.resolve() : taskStore.fetchTasks().catch(() => {}),
+      ]),
+      1800
+    );
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Unable to load dashboard data.";
+  }
+};
+
+const handleCreateTask = async (formData) => {
+  creatingTaskLoading.value = true;
+  taskFormErrors.value = {};
+  try {
+    const toUtcIso = (localInput) => (localInput ? new Date(localInput).toISOString() : null);
+    await taskStore.createTask({
+      ...formData,
+      project_id: Number(formData.project_id),
+      due_date: toUtcIso(formData.due_date),
+    });
+    isCreateTaskOpen.value = false;
+    showToast("Task added to your academic ledger.");
+    await loadDashboard();
+  } catch (err) {
+    taskFormErrors.value = err.response?.data?.errors || {};
+    error.value = err.response?.data?.message || "Unable to create task.";
+  } finally {
+    creatingTaskLoading.value = false;
   }
 };
 
@@ -35,98 +84,285 @@ onMounted(loadDashboard);
 
 <template>
   <div class="page-shell">
+    <!-- Header -->
     <PageHeader
-      :title="authStore.isAdmin ? 'System overview' : `Good to see you, ${authStore.user?.full_name?.split(' ')[0] || 'there'}.`"
-      :description="authStore.isAdmin ? 'A concise read on accounts, project activity, and system-wide task health.' : 'A clear read on the work in front of you.'"
+      :title="authStore.isAdmin ? 'System Governance Overview' : greeting"
+      :description="authStore.isAdmin ? 'A high-level read on user accounts, system courses, and task health.' : 'Track your academic milestones, upcoming deadlines, and study momentum.'"
+      :badge="authStore.isAdmin ? 'Admin Console' : 'Active Semester'"
     >
       <template #actions>
-        <router-link v-if="!authStore.isAdmin" class="btn-primary gap-2" to="/tasks"><AppIcon name="plus" :size="16" />Create task</router-link>
-        <button class="btn-secondary gap-2" type="button" :disabled="analyticsStore.loading" @click="loadDashboard"><AppIcon name="refresh" :size="16" />{{ analyticsStore.loading ? "Refreshing..." : "Refresh" }}</button>
+        <button
+          v-if="!authStore.isAdmin"
+          class="btn-primary gap-2"
+          type="button"
+          @click="isCreateTaskOpen = true"
+        >
+          <AppIcon name="plus" :size="16" /> Quick Task
+        </button>
+        <button
+          class="btn-secondary gap-2"
+          type="button"
+          :disabled="analyticsStore.loading"
+          @click="loadDashboard"
+        >
+          <AppIcon name="refresh" :size="16" :class="{ 'animate-spin': analyticsStore.loading }" />
+          {{ analyticsStore.loading ? "Updating..." : "Refresh" }}
+        </button>
       </template>
     </PageHeader>
-    <p v-if="analyticsStore.stats" class="data-label mt-4">Updated from {{ analyticsStore.source === 'cache' ? 'cached snapshot' : 'live database' }}</p>
 
+    <!-- Data source tag -->
+    <div class="mt-3 flex items-center gap-2">
+      <span class="inline-flex items-center gap-1.5 font-mono text-xs text-slate-400">
+        <span
+          class="h-2 w-2 rounded-full"
+          :class="analyticsStore.source === 'cache' ? 'bg-amber-400' : 'bg-emerald-400'"
+        ></span>
+        Synced from {{ analyticsStore.source === 'cache' ? 'Cache snapshot' : 'live database' }}
+      </span>
+    </div>
+
+    <!-- Urgent Notification Callout Banner -->
     <section
       v-if="!authStore.isAdmin && notificationStore.unreadCount"
-      class="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 border border-ember/40 bg-white px-5 py-4 dark:border-ember-dark/50 dark:bg-night-surface"
+      class="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-gradient-to-r from-rose-50/90 to-amber-50/50 p-4 dark:border-rose-900/40 dark:from-rose-950/40 dark:to-amber-950/20 shadow-sm transition-all duration-300 hover:shadow-md"
       aria-live="polite"
     >
-      <AppIcon name="alert" :size="20" class="text-ember dark:text-ember-dark" />
-      <p class="text-sm text-ink dark:text-[#E7E9ED]">
-        <strong class="font-semibold">{{ notificationStore.unreadCount }} unread reminder{{ notificationStore.unreadCount === 1 ? "" : "s" }}</strong>
-        from the deadline job. Review what needs attention.
-      </p>
-      <router-link class="ml-auto min-h-11 px-1 py-2 text-sm font-medium text-ink underline decoration-slate/50 underline-offset-4 hover:decoration-ink dark:text-[#E7E9ED]" to="/notifications">Open inbox</router-link>
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-900/60 dark:text-rose-300">
+          <AppIcon name="alert" :size="20" class="animate-pulse" />
+        </div>
+        <div>
+          <h4 class="font-display text-sm font-bold text-slate-900 dark:text-white">
+            {{ notificationStore.unreadCount }} Pending Deadline Reminder{{ notificationStore.unreadCount === 1 ? "" : "s" }}
+          </h4>
+          <p class="text-xs text-slate-600 dark:text-slate-400">
+            You have upcoming assignments or tasks that need attention.
+          </p>
+        </div>
+      </div>
+      <router-link
+        to="/notifications"
+        class="btn-secondary text-xs"
+      >
+        View Inbox &rarr;
+      </router-link>
     </section>
 
-    <p v-if="error" class="field-error mt-5" aria-live="polite">{{ error }}</p>
-    <p v-if="analyticsStore.loading && !analyticsStore.stats" class="mt-12 text-sm text-slate dark:text-[#9AA3B2]">Loading your current account of work...</p>
+    <!-- Error notice -->
+    <p v-if="error" class="field-error mt-4" aria-live="polite">
+      <AppIcon name="alert" :size="16" /> {{ error }}
+    </p>
 
-    <section v-else-if="authStore.isAdmin" class="mt-10 grid border-t border-slate/20 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate/30">
-      <article class="metric-block border-r-0 px-0 sm:px-5 sm:first:pl-0 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
-        <p class="data-label">Active users</p><p class="metric-number">{{ stats.active_users || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">of {{ stats.total_users || 0 }} accounts</p>
-      </article>
-      <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
-        <p class="data-label">Projects</p><p class="metric-number">{{ stats.total_projects || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">system-wide</p>
-      </article>
-      <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30">
-        <p class="data-label">Overdue tasks</p><p class="metric-number text-ember dark:text-ember-dark">{{ stats.overdue_tasks || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">need attention</p>
-      </article>
-      <article class="metric-block px-0 sm:px-5 sm:last:pr-0">
-        <p class="data-label">Activity, 24h</p><p class="metric-number">{{ stats.activity_last_24h || 0 }}</p><p class="mt-1 text-sm text-slate dark:text-[#9AA3B2]">recorded changes</p>
-      </article>
+    <!-- Loading State with UIverse Skeleton & Orbital AppLoader -->
+    <div v-if="analyticsStore.loading && !analyticsStore.stats" class="mt-8 space-y-6">
+      <SkeletonLoader type="metrics" :count="4" />
+      <AppLoader size="md" text="Synchronizing academic workplace metrics" />
+    </div>
+
+    <!-- Admin Overview Cards with Animated Numbers -->
+    <section v-else-if="authStore.isAdmin" class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="metric-card border-l-4 border-l-brand-500 transition-all duration-300 hover:-translate-y-1">
+        <span class="data-label">Active Users</span>
+        <p class="metric-value mt-2">
+          <AnimatedNumber :value="stats.active_users || 0" />
+        </p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">of {{ stats.total_users || 0 }} total registered</p>
+      </div>
+
+      <div class="metric-card border-l-4 border-l-academic-purple transition-all duration-300 hover:-translate-y-1">
+        <span class="data-label">Courses & Projects</span>
+        <p class="metric-value mt-2">
+          <AnimatedNumber :value="stats.total_projects || 0" />
+        </p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Active workspaces</p>
+      </div>
+
+      <div class="metric-card border-l-4 border-l-rose-500 transition-all duration-300 hover:-translate-y-1">
+        <span class="data-label">System Overdue Tasks</span>
+        <p class="metric-value mt-2 text-rose-600 dark:text-rose-400">
+          <AnimatedNumber :value="stats.overdue_tasks || 0" />
+        </p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Need immediate follow-up</p>
+      </div>
+
+      <div class="metric-card border-l-4 border-l-emerald-500 transition-all duration-300 hover:-translate-y-1">
+        <span class="data-label">Activity (Last 24h)</span>
+        <p class="metric-value mt-2 text-emerald-600 dark:text-emerald-400">
+          <AnimatedNumber :value="stats.activity_last_24h || 0" />
+        </p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Recorded audit events</p>
+      </div>
     </section>
 
+    <!-- Empty State for new users -->
     <EmptyState
       v-else-if="isEmpty"
-      class="mt-12"
-      title="No tasks yet"
-      description="Create your first project, then add the next piece of work you want to track."
+      class="mt-10"
+      title="Your Academic Workspace is Ready"
+      description="Create your first Course or Project to start organizing assignments, study schedules, and task milestones."
     >
       <template #actions>
-        <router-link class="btn-primary gap-2" to="/projects"><AppIcon name="plus" :size="16" />Create your first project</router-link>
+        <router-link class="btn-primary gap-2" to="/projects">
+          <AppIcon name="plus" :size="16" /> Create Your First Course
+        </router-link>
       </template>
     </EmptyState>
 
+    <!-- Student Dashboard Main Grid -->
     <template v-else-if="!authStore.isAdmin">
-      <section v-if="report" class="surface mt-10 flex flex-wrap items-baseline gap-x-8 gap-y-2 px-5 py-4">
-        <div>
-          <p class="data-label">Latest daily report · {{ report.report_date }}</p>
-          <p class="mt-1 text-sm text-ink dark:text-[#E7E9ED]">{{ report.completed_tasks }} of {{ report.total_tasks }} done, {{ report.overdue_tasks }} overdue.</p>
+      <!-- Daily Report Summary Banner -->
+      <section
+        v-if="report"
+        class="surface mt-6 flex flex-wrap items-center justify-between gap-4 p-5"
+      >
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300">
+            <AppIcon name="sparkles" :size="20" />
+          </div>
+          <div>
+            <span class="data-label">Daily Productivity Digest · {{ report.report_date }}</span>
+            <p class="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white">
+              {{ report.completed_tasks }} of {{ report.total_tasks }} items completed · {{ report.overdue_tasks }} overdue
+            </p>
+          </div>
         </div>
-        <router-link class="ml-auto min-h-11 px-1 py-2 text-sm font-medium text-ink underline decoration-slate/50 underline-offset-4 hover:decoration-ink dark:text-[#E7E9ED]" to="/notifications">How this was generated</router-link>
+        <router-link
+          to="/notifications"
+          class="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400"
+        >
+          View Full Breakdown &rarr;
+        </router-link>
       </section>
 
-      <section class="mt-10 grid border-t border-slate/20 sm:grid-cols-2 lg:grid-cols-4 dark:border-slate/30">
-        <article class="metric-block border-r-0 px-0 sm:px-5 sm:first:pl-0 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Open tasks</p><p class="metric-number">{{ (stats.total_tasks || 0) - (stats.completed_tasks || 0) }}</p></article>
-        <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Completed</p><p class="metric-number text-ledger-green dark:text-ledger-greenDark">{{ stats.completed_tasks || 0 }}</p></article>
-        <article class="metric-block border-r-0 px-0 sm:px-5 lg:border-r lg:border-slate/20 dark:lg:border-slate/30"><p class="data-label">Overdue</p><p class="metric-number text-ember dark:text-ember-dark">{{ stats.overdue_tasks || 0 }}</p></article>
-        <article class="metric-block px-0 sm:px-5 sm:last:pr-0"><p class="data-label">Completion</p><p class="metric-number">{{ stats.completion_rate || 0 }}%</p></article>
+      <!-- KPI Metrics Grid with Animated Numbers -->
+      <section class="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Open Tasks -->
+        <div class="metric-card border-l-4 border-l-brand-500 transition-all duration-300 hover:-translate-y-1">
+          <span class="data-label">Open Tasks</span>
+          <p class="metric-value mt-2">
+            <AnimatedNumber :value="(stats.total_tasks || 0) - (stats.completed_tasks || 0)" />
+          </p>
+          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>In progress or to do</span>
+            <router-link to="/tasks" class="font-semibold text-brand-600 hover:underline dark:text-brand-400">View tasks</router-link>
+          </div>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="metric-card border-l-4 border-l-emerald-500 transition-all duration-300 hover:-translate-y-1">
+          <span class="data-label">Completed Tasks</span>
+          <p class="metric-value mt-2 text-emerald-600 dark:text-emerald-400">
+            <AnimatedNumber :value="stats.completed_tasks || 0" />
+          </p>
+          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Logged as done</span>
+            <span class="font-semibold text-emerald-600">Great progress!</span>
+          </div>
+        </div>
+
+        <!-- Overdue Tasks -->
+        <div class="metric-card border-l-4 border-l-rose-500 transition-all duration-300 hover:-translate-y-1">
+          <span class="data-label">Overdue Deadlines</span>
+          <p class="metric-value mt-2 text-rose-600 dark:text-rose-400">
+            <AnimatedNumber :value="stats.overdue_tasks || 0" />
+          </p>
+          <div class="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Passed scheduled due date</span>
+            <span v-if="stats.overdue_tasks > 0" class="font-semibold text-rose-600">Needs attention</span>
+            <span v-else class="font-semibold text-emerald-600">All caught up</span>
+          </div>
+        </div>
+
+        <!-- Completion Rate Progress -->
+        <div class="metric-card border-l-4 border-l-indigo-500 transition-all duration-300 hover:-translate-y-1">
+          <span class="data-label">Completion Velocity</span>
+          <p class="metric-value mt-2">
+            <AnimatedNumber :value="stats.completion_rate || 0" suffix="%" />
+          </p>
+          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              class="h-full rounded-full bg-gradient-to-r from-brand-500 to-emerald-500 transition-all duration-700 ease-out"
+              :style="{ width: `${stats.completion_rate || 0}%` }"
+            ></div>
+          </div>
+        </div>
       </section>
 
-      <section class="mt-12 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
-        <article>
-          <h2 class="section-title">Completed over seven days</h2>
-          <p class="mt-2 body-copy">Each mark records a status change to done.</p>
-          <div class="mt-8 flex h-44 items-end gap-2 border-b border-slate/30 pb-1 dark:border-slate/40">
-            <div v-for="item in stats.completion_trend || []" :key="item.date" class="flex h-full min-w-0 flex-1 flex-col justify-end gap-2">
-              <span class="data-label truncate text-center">{{ item.count }}</span>
-              <div class="min-h-[4px] bg-ink dark:bg-[#E7E9ED]" :style="{ height: `${Math.max((item.count / trendMax) * 100, 3)}%` }"></div>
-              <span class="data-label truncate text-center">{{ new Date(`${item.date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short' }) }}</span>
+      <!-- Analytics & Performance Section -->
+      <section class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)]">
+        <!-- 7-Day Completion Trend Interactive Bar Chart -->
+        <AnimatedBarChart :trend="stats.completion_trend || []" />
+
+        <!-- Status & Priority Breakdown Card -->
+        <div class="surface-card flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+              <h2 class="section-title">Ledger Distribution</h2>
+              <AppIcon name="tasks" :size="18" class="text-slate-400" />
+            </div>
+
+            <!-- Status Breakdown -->
+            <div class="mt-4 space-y-2.5">
+              <span class="data-label block">By Status</span>
+              <div
+                v-for="item in stats.status_breakdown || []"
+                :key="item.label"
+                class="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 transition-colors hover:bg-slate-100 dark:bg-night-surface dark:hover:bg-slate-850"
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    class="h-2 w-2 rounded-full"
+                    :class="item.label === 'done' ? 'bg-emerald-500' : item.label === 'in_progress' ? 'bg-amber-500' : 'bg-slate-400'"
+                  ></span>
+                  <span class="text-xs font-semibold capitalize text-slate-700 dark:text-slate-300">
+                    {{ item.label.replace('_', ' ') }}
+                  </span>
+                </div>
+                <span class="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                  <AnimatedNumber :value="item.count" />
+                </span>
+              </div>
+            </div>
+
+            <!-- Priority Breakdown -->
+            <div class="mt-5 space-y-2.5">
+              <span class="data-label block">By Priority</span>
+              <div
+                v-for="item in stats.priority_breakdown || []"
+                :key="item.label"
+                class="flex items-center justify-between rounded-xl bg-slate-50 p-2.5 transition-colors hover:bg-slate-100 dark:bg-night-surface dark:hover:bg-slate-850"
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    class="h-2 w-2 rounded-full"
+                    :class="item.label === 'high' ? 'bg-rose-500' : item.label === 'medium' ? 'bg-amber-500' : 'bg-slate-400'"
+                  ></span>
+                  <span class="text-xs font-semibold capitalize text-slate-700 dark:text-slate-300">
+                    {{ item.label }}
+                  </span>
+                </div>
+                <span class="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                  <AnimatedNumber :value="item.count" />
+                </span>
+              </div>
             </div>
           </div>
-        </article>
-        <article>
-          <h2 class="section-title">Status account</h2>
-          <div class="mt-5 border-t border-slate/20 dark:border-slate/30">
-            <div v-for="item in stats.status_breakdown || []" :key="item.label" class="flex items-center justify-between border-b border-slate/20 py-4 dark:border-slate/30"><span class="text-sm capitalize text-ink dark:text-[#E7E9ED]">{{ item.label.replace('_', ' ') }}</span><span class="data-label">{{ item.count }}</span></div>
-          </div>
-          <h2 class="section-title mt-8">Priority account</h2>
-          <div class="mt-5 border-t border-slate/20 dark:border-slate/30">
-            <div v-for="item in stats.priority_breakdown || []" :key="item.label" class="flex items-center justify-between border-b border-slate/20 py-4 dark:border-slate/30"><span class="text-sm capitalize text-ink dark:text-[#E7E9ED]">{{ item.label }}</span><span class="data-label">{{ item.count }}</span></div>
-          </div>
-        </article>
+        </div>
       </section>
+
+      <!-- Study Velocity Heatmap & Streak Matrix -->
+      <StudyHeatmap :tasks="taskStore.items" :stats="stats" class="mt-8" />
     </template>
+
+    <!-- Quick Task Creation Modal -->
+    <TaskModal
+      :is-open="isCreateTaskOpen"
+      :projects="projectStore.items"
+      :loading="creatingTaskLoading"
+      :form-errors="taskFormErrors"
+      @close="isCreateTaskOpen = false"
+      @save="handleCreateTask"
+    />
   </div>
 </template>
