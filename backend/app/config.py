@@ -7,10 +7,9 @@ load_dotenv()
 
 
 def _origins():
-    value = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-    # Browsers send `Origin` without a trailing slash, so normalize entries:
-    # `http://localhost:5173/` would otherwise never match and produce
-    # responses with no Access-Control-Allow-Origin header at all.
+    value = os.getenv("CORS_ORIGINS", "*").strip()
+    if value == "*" or not value:
+        return ["*"]
     return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip().rstrip("/")]
 
 

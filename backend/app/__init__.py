@@ -28,9 +28,10 @@ def create_app(config_override=None):
     jwt.init_app(app)
     cors.init_app(
         app,
-        resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}},
-        allow_headers=["Content-Type", "Authorization"],
+        resources={r"/*": {"origins": app.config["CORS_ORIGINS"]}},
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        supports_credentials=True,
     )
     init_redis(app)
     init_celery(app)

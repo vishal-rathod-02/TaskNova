@@ -1,8 +1,14 @@
 import axios from "axios";
 import { useAuthStore } from "../stores/auth";
 
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+  const trimmed = envUrl.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5001/api",
+  baseURL: getBaseUrl(),
   headers: {
     "Content-Type": "application/json",
   },
@@ -13,7 +19,6 @@ const isPublicAuthRequest = (config) =>
   config?.url?.includes("/auth/login") || config?.url?.includes("/auth/register");
 
 apiClient.interceptors.request.use((config) => {
-  // Never overwrite the explicit refresh-token header on /auth/refresh.
   if (isRefreshRequest(config)) {
     return config;
   }
@@ -30,8 +35,6 @@ apiClient.interceptors.response.use(
     const authStore = useAuthStore();
     const originalRequest = error.config;
 
-    // The refresh call itself failed, or this is a public auth call:
-    // do not attempt another refresh, just force a clean logout.
     if (isRefreshRequest(originalRequest) || isPublicAuthRequest(originalRequest)) {
       if (error.response?.status === 401 || error.response?.status === 403) {
         authStore.logout();
