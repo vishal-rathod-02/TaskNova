@@ -28,3 +28,18 @@ def register_commands(app):
             admin.role = "admin"
             db.session.commit()
             print(f"Admin account updated successfully: {admin_email} ({admin_name})")
+
+    @app.cli.command("run-jobs")
+    def run_jobs_command():
+        """Run deadline reminders and daily productivity digest calculation."""
+        from .tasks_jobs.tasks import run_daily_productivity_report, run_deadline_reminders
+
+        print("Checking deadlines and sending reminders...")
+        reminders = run_deadline_reminders()
+        print(f"Reminders result: {reminders}")
+
+        print("Generating daily productivity reports...")
+        reports = run_daily_productivity_report()
+        print(f"Daily reports result: {reports}")
+        print("Background jobs completed successfully.")
+

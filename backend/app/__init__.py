@@ -17,6 +17,43 @@ from .projects import projects_bp
 from .tasks import tasks_bp
 
 
+import os
+
+def _bootstrap_admin(app):
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@tasknova.com").lower().strip()
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_name = os.getenv("ADMIN_NAME", "System Admin")
+
+    if not admin_email or not admin_password:
+        return
+
+    try:
+        with app.app_context():
+            admin = User.query.filter_by(email=admin_email).first()
+            if not admin:
+                admin = User(full_name=admin_name, email=admin_email, role="admin")
+                admin.set_password(admin_password)
+                db.session.add(admin)
+                db.session.commit()
+                app.logger.info("Auto-bootstrapped admin account: %s", admin_email)
+            else:
+                updated = False
+                if admin.role != "admin":
+                    admin.role = "admin"
+                    updated = True
+                if admin.full_name != admin_name:
+                    admin.full_name = admin_name
+                    updated = True
+                if os.getenv("ADMIN_PASSWORD"):
+                    admin.set_password(admin_password)
+                    updated = True
+                if updated:
+                    db.session.commit()
+                    app.logger.info("Synced admin credentials from environment: %s", admin_email)
+    except Exception as exc:
+        app.logger.warning("Admin bootstrap notice: %s", exc)
+
+
 def create_app(config_override=None):
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -47,6 +84,7 @@ def create_app(config_override=None):
     if app.config.get("AUTO_CREATE_DB", True):
         with app.app_context():
             db.create_all()
+        _bootstrap_admin(app)
 
     @app.before_request
     def begin_request_timer():

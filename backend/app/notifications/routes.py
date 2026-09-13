@@ -58,3 +58,14 @@ def mark_all_notifications_read():
     Notification.query.filter_by(user_id=user.id, is_read=False).update({"is_read": True})
     db.session.commit()
     return jsonify({"message": "All notifications marked as read."})
+
+
+@notifications_bp.route("/trigger-jobs", methods=["GET", "POST"])
+def trigger_jobs():
+    """Trigger background reminder and daily report generation on demand or via scheduled webhook."""
+    from ..tasks_jobs.tasks import run_daily_productivity_report, run_deadline_reminders
+
+    reminders = run_deadline_reminders()
+    reports = run_daily_productivity_report()
+    return jsonify({"status": "ok", "reminders": reminders, "reports": reports})
+
