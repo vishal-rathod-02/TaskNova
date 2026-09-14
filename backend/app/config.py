@@ -3,14 +3,21 @@ from datetime import timedelta
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load local environment overrides if present, then standard .env
+load_dotenv(".env.local")
+load_dotenv(".env")
+
 
 
 def _origins():
-    value = os.getenv("CORS_ORIGINS", "*").strip()
-    if value == "*" or not value:
-        return ["*"]
-    return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip().rstrip("/")]
+    value = os.getenv("CORS_ORIGINS", "").strip()
+    if not value or value == "*":
+        return [r".*"]
+    items = [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip().rstrip("/")]
+    if "*" in items:
+        return [r".*"]
+    return items
+
 
 
 def _database_url():
@@ -38,3 +45,15 @@ class Config:
     ADMIN_DASHBOARD_CACHE_TTL = int(os.getenv("ADMIN_DASHBOARD_CACHE_TTL", "120"))
     REMINDER_WINDOW_HOURS = int(os.getenv("REMINDER_WINDOW_HOURS", "24"))
     AUTO_CREATE_DB = os.getenv("AUTO_CREATE_DB", "true").lower() == "true"
+
+    # Mail / SMTP Notification Settings
+    MAIL_ENABLED = os.getenv("MAIL_ENABLED", "false").lower() == "true"
+    MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+    MAIL_PORT = int(os.getenv("MAIL_PORT", "587"))
+    MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "true").lower() == "true"
+    MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "false").lower() == "true"
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
+    MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
+    MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "TaskNova <[EMAIL_ADDRESS]")
+    APP_FRONTEND_URL = os.getenv("APP_FRONTEND_URL", "https://localhost:5173")
+

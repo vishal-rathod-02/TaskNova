@@ -9,6 +9,7 @@ from ..celery_app import celery
 from ..extensions import db
 from ..models import DailyReport, Notification, Project, Task, User
 from ..models.time import iso_utc, utcnow
+from ..services.email_service import send_daily_digest_email, send_deadline_email
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,8 @@ def _same_day_notification_exists(user_id, kind, task_id, day):
 
 
 def run_deadline_reminders():
-    """Create one persistent notification per due/overdue task per owner per day.
+    """Create one persistent notification per due/overdue task per owner per day,
+    and optionally dispatches an email alert if email is enabled.
 
     Extracted from the Celery task body so tests can exercise the same logic
     inside a Flask test-app context without a broker.
@@ -66,12 +68,30 @@ def run_deadline_reminders():
         )
         logger.info("Deadline reminder queued for owner=%s task=%s due=%s", task.project.owner_id, task.id, task.due_date.isoformat())
         notified += 1
+
+        # Dispatch email alert if owner has an email
+        owner = db.session.get(User, task.project.owner_id)
+        if owner and owner.email:
+            try:
+                send_deadline_email(
+                    user_email=owner.email,
+                    user_name=owner.full_name,
+                    task_title=task.title,
+                    project_name=task.project.name,
+                    due_date_str=due_label,
+                    is_overdue=(kind == "overdue"),
+                )
+            except Exception as mail_err:
+                logger.warning("Failed sending deadline email for task %s to %s: %s", task.id, owner.email, mail_err)
+
     db.session.commit()
     return {"checked": len(tasks), "notified": notified, "generated_at": iso_utc(now)}
 
 
 def run_daily_productivity_report():
-    """Write one DailyReport per active user plus a matching notification."""
+    """Write one DailyReport per active user plus a matching notification,
+    and dispatch the daily productivity digest email.
+    """
     now = utcnow()
     today = now.date()
     users = User.query.filter_by(is_blocked=False).all()
@@ -89,15 +109,14 @@ def run_daily_productivity_report():
             report.completed_tasks = completed
             report.overdue_tasks = overdue
         else:
-            db.session.add(
-                DailyReport(
-                    user_id=user.id,
-                    report_date=today,
-                    total_tasks=total,
-                    completed_tasks=completed,
-                    overdue_tasks=overdue,
-                )
+            report = DailyReport(
+                user_id=user.id,
+                report_date=today,
+                total_tasks=total,
+                completed_tasks=completed,
+                overdue_tasks=overdue,
             )
+            db.session.add(report)
         existing = Notification.query.filter_by(user_id=user.id, kind="daily_report").filter(
             func.date(Notification.created_at) == today
         ).first()
@@ -115,10 +134,24 @@ def run_daily_productivity_report():
                 )
             )
         reports_written += 1
+
+        # Dispatch daily digest email
+        if user.email:
+            try:
+                digest_stats = report.to_dict()
+                send_daily_digest_email(
+                    user_email=user.email,
+                    user_name=user.full_name,
+                    digest_data=digest_stats,
+                )
+            except Exception as mail_err:
+                logger.warning("Failed sending daily digest email to %s: %s", user.email, mail_err)
+
     db.session.commit()
     report = {"generated_at": iso_utc(now), "reports_written": reports_written}
     logger.info("Daily productivity report generated: %s", report)
     return report
+
 
 
 @celery.task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})

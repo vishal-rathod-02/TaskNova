@@ -124,6 +124,12 @@ def create_app(config_override=None):
             return jsonify({"message": "Resource not found."}), 404
         return error
 
+    @app.errorhandler(500)
+    def server_error(error):
+        if request.path.startswith("/api/"):
+            return jsonify({"message": "Internal server error."}), 500
+        return error
+
     @app.get("/health")
     def health():
         return jsonify({"status": "ok", "service": "tasknova-api"})
