@@ -43,3 +43,43 @@ def register_commands(app):
         print(f"Daily reports result: {reports}")
         print("Background jobs completed successfully.")
 
+    @app.cli.command("send-test-email")
+    @click.option("--to", required=True, help="Recipient email address")
+    def send_test_email_command(to):
+        """Send a test email to verify SMTP configuration."""
+        from .services.email_service import send_email
+
+        subject = "🧪 TaskNova Test Email Notification"
+        html = f"""
+        <div style="font-family:sans-serif;background:#0f172a;color:#f8fafc;padding:24px;border-radius:12px;">
+            <h2 style="color:#6366f1;">TaskNova SMTP Service Verification</h2>
+            <p>Congratulations! Your email service is properly configured and communicating with TaskNova.</p>
+            <p>Recipient: <strong>{to}</strong></p>
+        </div>
+        """
+        plain = f"TaskNova SMTP Service Verification\n\nYour email service is properly configured. Recipient: {to}"
+        print(f"Attempting to send test email to {to}...")
+        success, msg = send_email(to, subject, html, plain)
+        if success:
+            print(f"✅ Success: {msg}")
+        else:
+            print(f"❌ Failed: {msg}")
+
+    @app.cli.command("test-digest-email")
+    @click.option("--to", required=True, help="Recipient email address")
+    @click.option("--name", default="Academic Scholar", help="Recipient full name")
+    def test_digest_email_command(to, name):
+        """Send a sample Daily Productivity Digest email to test formatting."""
+        from .models.notification import _compute_digest_stats
+        from .services.email_service import send_daily_digest_email
+
+        from datetime import date
+        sample_stats = _compute_digest_stats(12, 9, 1, date.today().isoformat())
+        print(f"Sending sample Daily Digest email to {to} ({name})...")
+        success, msg = send_daily_digest_email(to, name, sample_stats)
+        if success:
+            print(f"✅ Success: {msg}")
+        else:
+            print(f"❌ Failed: {msg}")
+
+
