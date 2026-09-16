@@ -84,6 +84,13 @@ def test_deadline_job_persists_notifications_and_report_endpoints(client, app):
     assert history.status_code == 200
     assert len(history.json["reports"]) == 1
 
+    digest = client.get("/api/analytics/report/digest", headers=headers)
+    assert digest.status_code == 200
+    assert "courses" in digest.json["digest"]
+    assert len(digest.json["digest"]["courses"]) == 1
+    assert digest.json["digest"]["courses"][0]["name"] == "Reminders"
+
+
 
 def test_admin_can_block_but_not_delete_an_admin(client, app):
     user_account = {"full_name": "Standard User", "email": "user@example.com", "password": "securepass"}
@@ -104,3 +111,39 @@ def test_admin_can_block_but_not_delete_an_admin(client, app):
     assert blocked.json["user"]["is_blocked"] is True
     assert client.post("/api/auth/login", json={"email": user_account["email"], "password": user_account["password"]}).status_code == 403
     assert client.delete(f"/api/admin/users/{admin_user['id']}", headers=admin_headers).status_code == 400
+
+
+def test_email_service_safe_fallback_and_formatting(app):
+    from app.services.email_service import send_daily_digest_email, send_deadline_email, send_email
+
+    with app.app_context():
+        # With default test settings (MAIL_ENABLED=False), send_email gracefully skips
+        success, msg = send_email("test@example.com", "Test Subject", "<p>Hello</p>")
+        assert success is False
+        assert "disabled" in msg.lower()
+
+        # Formatting calls execute without raising exceptions
+        deadline_res, deadline_msg = send_deadline_email(
+            "student@example.com", "Student Name", "Calculus Assignment", "MATH-101", "Oct 10, 14:00", is_overdue=False
+        )
+        assert deadline_res is False
+        assert "disabled" in deadline_msg.lower()
+
+        digest_res, digest_msg = send_daily_digest_email(
+            "student@example.com",
+            "Student Name",
+            {
+                "report_date": "2026-10-10",
+                "total_tasks": 5,
+                "completed_tasks": 4,
+                "in_progress_tasks": 1,
+                "overdue_tasks": 0,
+                "completion_rate": 80.0,
+                "grade": "A+",
+                "momentum": "Peak Velocity",
+                "quote": "Keep it up!",
+            },
+        )
+        assert digest_res is False
+        assert "disabled" in digest_msg.lower()
+
