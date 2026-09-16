@@ -104,16 +104,16 @@ watch(
           <span>Academic Calendar</span>
         </router-link>
 
-        <router-link to="/notifications" class="nav-item justify-between">
-          <span class="flex items-center gap-3">
-            <AppIcon name="bell" :size="18" />
-            <span>Notification Inbox</span>
+        <router-link to="/notifications" class="nav-item justify-between gap-2">
+          <span class="flex min-w-0 flex-1 items-center gap-3">
+            <AppIcon name="bell" :size="18" class="flex-none" />
+            <span class="truncate">Notification Inbox</span>
           </span>
           <span
             v-if="notificationStore.unreadCount"
-            class="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-extrabold text-white shadow-sm"
+            class="flex h-5 min-w-5 flex-none items-center justify-center whitespace-nowrap rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-extrabold tabular-nums text-white shadow-sm"
           >
-            {{ notificationStore.unreadCount }}
+            {{ notificationStore.unreadCount > 99 ? "99+" : notificationStore.unreadCount }}
           </span>
         </router-link>
 

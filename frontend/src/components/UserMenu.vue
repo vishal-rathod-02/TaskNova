@@ -176,7 +176,7 @@ const signOut = () => {
             </span>
 
             <span
-              class="rounded-md px-2 py-0.5 font-mono text-[10px] font-bold"
+              class="flex-none whitespace-nowrap rounded-md px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums"
               :class="timerStore.isRunning ? 'bg-brand-600 text-white animate-pulse' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'"
             >
               {{ timerStore.formattedTime }}
@@ -187,21 +187,21 @@ const signOut = () => {
           <router-link
             to="/notifications"
             role="menuitem"
-            class="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
+            class="flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
             @click="close"
           >
-            <span class="flex items-center gap-2.5">
-              <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
+            <span class="flex min-w-0 flex-1 items-center gap-2.5">
+              <span class="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
                 <AppIcon name="bell" :size="15" />
               </span>
-              <span>Notification Inbox</span>
+              <span class="truncate">Notification Inbox</span>
             </span>
 
             <span
               v-if="notificationStore.unreadCount"
-              class="rounded-full bg-rose-500 px-2 py-0.5 font-mono text-[10px] font-bold text-white shadow-sm"
+              class="flex h-5 min-w-7 flex-none items-center justify-center gap-1 whitespace-nowrap rounded-full bg-rose-500 px-2 font-mono text-[10px] font-extrabold tabular-nums text-white shadow-sm"
             >
-              {{ notificationStore.unreadCount }} new
+              {{ notificationStore.unreadCount > 99 ? "99+" : notificationStore.unreadCount }} new
             </span>
           </router-link>
 
