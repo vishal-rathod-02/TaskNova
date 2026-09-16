@@ -141,14 +141,14 @@ onMounted(loadCalendarData);
     >
       <template #actions>
         <!-- Export Dropdown with Click-Outside and Transition -->
-        <div ref="exportMenuRef" class="relative">
+        <div ref="exportMenuRef" class="relative w-full sm:w-auto">
           <button
-            class="btn-secondary gap-2"
+            class="btn-secondary min-h-11 w-full justify-center gap-2 sm:w-auto"
             type="button"
             :aria-expanded="isExportOpen"
             @click="isExportOpen = !isExportOpen"
           >
-            <AppIcon name="sparkles" :size="16" />
+            <AppIcon name="sparkles" :size="16" class="flex-none" />
             <span>Export</span>
             <AppIcon name="chevron" :size="14" class="text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': isExportOpen }" />
           </button>
@@ -163,7 +163,7 @@ onMounted(loadCalendarData);
           >
             <div
               v-if="isExportOpen"
-              class="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl z-40 dark:border-slate-800 dark:bg-night-surface/95"
+              class="absolute left-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200/90 bg-white/95 p-1.5 shadow-2xl backdrop-blur-xl z-40 dark:border-slate-800 dark:bg-night-surface/95 sm:left-auto sm:right-0"
             >
               <div class="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80 mb-1">
                 <span class="text-[10px] font-mono font-bold tracking-wider uppercase text-slate-400">Export Options</span>
@@ -215,12 +215,12 @@ onMounted(loadCalendarData);
         </div>
 
         <button
-          class="btn-primary gap-2"
+          class="btn-primary min-h-11 w-full justify-center gap-2 sm:w-auto"
           type="button"
           :disabled="!hasProjects"
           @click="openCreateModal"
         >
-          <AppIcon name="plus" :size="16" /> Schedule Task
+          <AppIcon name="plus" :size="16" class="flex-none" /> Schedule Task
         </button>
       </template>
     </PageHeader>
