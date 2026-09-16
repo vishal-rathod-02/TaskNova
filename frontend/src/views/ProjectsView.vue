@@ -306,7 +306,6 @@ onMounted(loadProjects);
       confirm-text="Delete Course"
       :loading="deleteLoading"
       :is-danger="true"
-      @close="isDeleteModalOpen = false"
       @cancel="isDeleteModalOpen = false"
       @confirm="confirmDelete"
     />

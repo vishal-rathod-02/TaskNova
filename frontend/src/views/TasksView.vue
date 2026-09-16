@@ -608,7 +608,6 @@ const formatActivityDate = (date) =>
       confirm-text="Delete Task"
       :loading="deleteLoading"
       :is-danger="true"
-      @close="isDeleteModalOpen = false"
       @cancel="isDeleteModalOpen = false"
       @confirm="confirmDelete"
     />
