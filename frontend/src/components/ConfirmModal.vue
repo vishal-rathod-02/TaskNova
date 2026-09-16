@@ -12,7 +12,12 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["confirm", "cancel"]);
+const emit = defineEmits(["confirm", "cancel", "close"]);
+
+const handleCancel = () => {
+  emit("cancel");
+  emit("close");
+};
 
 watch(
   () => props.isOpen,
@@ -49,7 +54,7 @@ watch(
             type="button"
             class="btn-secondary"
             :disabled="loading"
-            @click="emit('cancel')"
+            @click="handleCancel"
           >
             {{ cancelText }}
           </button>

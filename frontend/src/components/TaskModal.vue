@@ -85,32 +85,34 @@ const submitForm = () => {
 <template>
   <Teleport to="body">
     <!-- Rigid Backdrop: Clicking outside does NOT close -->
-    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in">
-      <div class="modal-panel max-w-xl animate-scale-in" role="dialog" aria-modal="true">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300">
-              <AppIcon :name="isEdit ? 'edit' : 'plus'" :size="20" />
+    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in overflow-y-auto">
+      <div class="modal-panel my-auto flex max-h-[92vh] w-full max-w-xl animate-scale-in flex-col overflow-hidden p-4 sm:p-6" role="dialog" aria-modal="true">
+        <div class="flex flex-none items-start justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800 sm:pb-4">
+          <div class="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+            <div class="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300 sm:h-10 sm:w-10">
+              <AppIcon :name="isEdit ? 'edit' : 'plus'" :size="19" />
             </div>
-            <div>
-              <h2 class="font-display text-lg font-bold text-slate-900 dark:text-white">
+            <div class="min-w-0 flex-1">
+              <h2 class="truncate font-display text-base font-bold text-slate-900 dark:text-white sm:text-lg">
                 {{ isEdit ? "Edit Task" : "Create New Task" }}
               </h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                {{ isEdit ? "Update details in your academic task ledger." : "Add assignments, course work, or study items." }}
+              <p class="truncate text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs">
+                {{ isEdit ? "Update task ledger details." : "Add assignments or study items." }}
               </p>
             </div>
           </div>
           <button
             type="button"
-            class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            class="flex min-h-9 min-w-9 flex-none items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            aria-label="Close dialog"
             @click="emit('close')"
           >
             <AppIcon name="x" :size="18" />
           </button>
         </div>
 
-        <form class="mt-5 space-y-4" @submit.prevent="submitForm">
+        <form class="flex min-h-0 flex-1 flex-col pt-4 sm:pt-5" @submit.prevent="submitForm">
+         <div class="min-h-0 flex-1 space-y-4 overflow-y-auto pr-0.5">
           <!-- Title -->
           <div>
             <label class="field-label" for="task-title">Task Title <span class="text-rose-500">*</span></label>
@@ -128,12 +130,11 @@ const submitForm = () => {
           </div>
 
           <!-- Description & Markdown Notes with Helpers -->
-          <div>
-            <div class="flex items-center justify-between">
-              <label class="field-label" for="task-desc">Description, Checkpoints & Formula Notes</label>
-              
+          <div class="min-w-0">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <label class="field-label truncate" for="task-desc">Description & Checkpoints</label>
               <!-- Editor / Preview Toggle -->
-              <div class="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5 dark:bg-night-card">
+              <div class="flex flex-none items-center gap-1 self-start rounded-lg bg-slate-100 p-0.5 dark:bg-night-card sm:self-auto">
                 <button
                   type="button"
                   class="rounded px-2 py-0.5 text-[11px] font-semibold transition-all"
@@ -215,13 +216,13 @@ const submitForm = () => {
             </div>
 
             <!-- Priority Selector -->
-            <div>
+            <div class="min-w-0">
               <label class="field-label">Priority Level</label>
               <div class="mt-1.5 grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   :class="form.priority === 'low' ? 'bg-slate-200 text-slate-800 font-bold dark:bg-slate-700 dark:text-white border-slate-400' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
+                  class="min-h-10 rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-slate-100 dark:hover:bg-slate-800"
                   @click="form.priority = 'low'"
                 >
                   Low
@@ -229,15 +230,15 @@ const submitForm = () => {
                 <button
                   type="button"
                   :class="form.priority === 'medium' ? 'bg-amber-100 text-amber-900 border-amber-400 font-bold dark:bg-amber-950/60 dark:text-amber-200' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-amber-50 dark:hover:bg-amber-950/40"
+                  class="min-h-10 rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-amber-50 dark:hover:bg-amber-950/40"
                   @click="form.priority = 'medium'"
                 >
-                  Medium
+                  Med
                 </button>
                 <button
                   type="button"
                   :class="form.priority === 'high' ? 'bg-rose-100 text-rose-900 border-rose-400 font-bold dark:bg-rose-950/60 dark:text-rose-200' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  class="min-h-10 rounded-xl border py-2 text-xs font-semibold transition-all hover:bg-rose-50 dark:hover:bg-rose-950/40"
                   @click="form.priority = 'high'"
                 >
                   High
@@ -248,14 +249,14 @@ const submitForm = () => {
 
           <!-- Status & Due Date Grid -->
           <div class="grid gap-4 sm:grid-cols-2">
-            <!-- Status -->
-            <div>
+              <!-- Status -->
+            <div class="min-w-0">
               <label class="field-label">Status</label>
               <div class="mt-1.5 grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   :class="form.status === 'todo' ? 'bg-brand-50 text-brand-700 border-brand-400 font-bold dark:bg-brand-950/60 dark:text-brand-300' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all"
+                  class="min-h-10 truncate rounded-xl border px-1 py-2 text-[11px] font-semibold transition-all sm:text-xs"
                   @click="form.status = 'todo'"
                 >
                   To Do
@@ -263,15 +264,15 @@ const submitForm = () => {
                 <button
                   type="button"
                   :class="form.status === 'in_progress' ? 'bg-amber-50 text-amber-700 border-amber-400 font-bold dark:bg-amber-950/60 dark:text-amber-300' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all"
+                  class="min-h-10 truncate rounded-xl border px-1 py-2 text-[11px] font-semibold transition-all sm:text-xs"
                   @click="form.status = 'in_progress'"
                 >
-                  In Progress
+                  In Prog.
                 </button>
                 <button
                   type="button"
                   :class="form.status === 'done' ? 'bg-emerald-50 text-emerald-700 border-emerald-400 font-bold dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-50 text-slate-600 dark:bg-night-card dark:text-slate-400 border-slate-200 dark:border-slate-800'"
-                  class="rounded-xl border py-2 text-xs font-semibold transition-all"
+                  class="min-h-10 truncate rounded-xl border px-1 py-2 text-[11px] font-semibold transition-all sm:text-xs"
                   @click="form.status = 'done'"
                 >
                   Done
@@ -323,22 +324,23 @@ const submitForm = () => {
             </div>
           </div>
 
+          </div>
           <!-- Actions -->
-          <div class="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+          <div class="grid flex-none grid-cols-2 gap-2 border-t border-slate-100 bg-white/80 pt-3 dark:border-slate-800 dark:bg-night-surface/80 sm:flex sm:items-center sm:justify-end sm:gap-3 sm:pt-4">
             <button
               type="button"
-              class="btn-secondary"
+              class="btn-secondary min-h-11 w-full justify-center sm:w-auto"
               @click="emit('close')"
             >
               Cancel
             </button>
             <button
               type="submit"
-              class="btn-primary"
+              class="btn-primary min-h-11 w-full justify-center sm:w-auto"
               :disabled="loading"
             >
-              <span v-if="loading" class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
-              {{ loading ? "Saving..." : (isEdit ? "Save Changes" : "Create Task") }}
+              <span v-if="loading" class="inline-block h-4 w-4 flex-none animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+              <span class="truncate">{{ loading ? "Saving..." : (isEdit ? "Save" : "Create") }}</span>
             </button>
           </div>
         </form>

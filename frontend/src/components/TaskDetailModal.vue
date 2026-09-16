@@ -29,11 +29,6 @@ const isOverdue = computed(() => {
   return task.value && task.value.status !== "done" && task.value.due_date && new Date(task.value.due_date) < new Date();
 });
 
-const statusLabel = computed(() => ({
-  todo: "To Do",
-  in_progress: "In Progress",
-  done: "Completed",
-}[task.value?.status] || task.value?.status));
 
 const relativeDue = computed(() => {
   if (!task.value?.due_date) return "No deadline set";
@@ -178,29 +173,29 @@ const formatActivityDate = (date) =>
 <template>
   <Teleport to="body">
     <!-- Rigid Backdrop: Click outside does NOT close -->
-    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in">
-      <div class="modal-panel max-w-2xl animate-scale-in" role="dialog" aria-modal="true">
+    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in overflow-y-auto">
+      <div class="modal-panel flex max-h-[92vh] w-full max-w-2xl animate-scale-in flex-col overflow-hidden p-4 sm:p-6 my-auto" role="dialog" aria-modal="true">
         <!-- Top Header -->
-        <div class="flex items-start justify-between border-b border-slate-100 pb-4 dark:border-slate-800">
-          <div class="flex items-center gap-3">
+        <div class="flex items-start justify-between gap-3 border-b border-slate-100 pb-4 dark:border-slate-800">
+          <div class="flex min-w-0 flex-1 items-center gap-3">
             <div class="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300">
               <AppIcon name="tasks" :size="22" />
             </div>
-            <div>
+            <div class="min-w-0 flex-1">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="data-label">Task Details & Record</span>
-                <span v-if="task?.project_name" class="project-badge">
-                  <AppIcon name="academic" :size="12" /> {{ task.project_name }}
+                <span v-if="task?.project_name" class="project-badge max-w-full truncate">
+                  <AppIcon name="academic" :size="12" class="flex-none" /> <span class="truncate">{{ task.project_name }}</span>
                 </span>
               </div>
-              <h2 class="font-display text-lg font-bold text-slate-900 dark:text-white">
+              <h2 class="break-words font-display text-base font-bold text-slate-900 dark:text-white sm:text-lg">
                 {{ task?.title || 'Academic Task' }}
               </h2>
             </div>
           </div>
           <button
             type="button"
-            class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            class="min-h-9 min-w-9 flex-none rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
             title="Close dialog"
             @click="emit('close')"
           >
@@ -225,7 +220,7 @@ const formatActivityDate = (date) =>
         </div>
 
         <!-- Main Task Content -->
-        <div v-else-if="task" class="my-5 max-h-[70vh] space-y-5 overflow-y-auto pr-1">
+        <div v-else-if="task" class="my-4 min-h-0 max-h-[58vh] flex-1 space-y-5 overflow-y-auto pr-1 sm:max-h-[62vh]">
           <!-- Status, Priority, and Deadline Badges Bar -->
           <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-night-card">
             <!-- Left Meta -->
@@ -251,14 +246,14 @@ const formatActivityDate = (date) =>
             </div>
 
             <!-- Right: Interactive Status Pill Switcher -->
-            <div class="flex items-center gap-1">
+            <div class="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto sm:items-center">
               <button
                 type="button"
                 :disabled="statusUpdating"
                 :class="task.status === 'todo'
                   ? 'bg-brand-600 text-white shadow-sm font-bold'
                   : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-night-surface dark:text-slate-400 dark:hover:bg-slate-800'"
-                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
+                class="min-h-9 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all"
                 @click="handleStatusChange('todo')"
               >
                 To Do
@@ -269,10 +264,10 @@ const formatActivityDate = (date) =>
                 :class="task.status === 'in_progress'
                   ? 'bg-amber-500 text-white shadow-sm font-bold'
                   : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-night-surface dark:text-slate-400 dark:hover:bg-slate-800'"
-                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
+                class="min-h-9 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all"
                 @click="handleStatusChange('in_progress')"
               >
-                In Progress
+                In Prog.
               </button>
               <button
                 type="button"
@@ -280,10 +275,10 @@ const formatActivityDate = (date) =>
                 :class="task.status === 'done'
                   ? 'bg-emerald-600 text-white shadow-sm font-bold'
                   : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-night-surface dark:text-slate-400 dark:hover:bg-slate-800'"
-                class="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
+                class="min-h-9 rounded-lg px-2 py-1.5 text-xs font-semibold transition-all"
                 @click="handleStatusChange('done')"
               >
-                ✓ Completed
+                ✓ Done
               </button>
             </div>
           </div>
@@ -337,16 +332,16 @@ const formatActivityDate = (date) =>
                 <div
                   v-for="entry in activity"
                   :key="entry.id"
-                  class="flex items-center justify-between rounded-lg bg-white p-2.5 text-xs dark:bg-night-card"
+                  class="flex flex-col gap-1.5 rounded-lg bg-white p-2.5 text-xs dark:bg-night-card sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div class="flex items-center gap-2">
-                    <span class="h-2 w-2 rounded-full bg-brand-500"></span>
-                    <span class="text-slate-700 dark:text-slate-300">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <span class="h-2 w-2 flex-none rounded-full bg-brand-500"></span>
+                    <span class="min-w-0 truncate text-slate-700 dark:text-slate-300">
                       <strong class="font-bold text-slate-900 dark:text-white">{{ entry.actor_name }}</strong>
                       {{ activityLabel(entry).toLowerCase() }}
                     </span>
                   </div>
-                  <span class="font-mono text-[11px] text-slate-400">{{ formatActivityDate(entry.created_at) }}</span>
+                  <span class="flex-none font-mono text-[11px] text-slate-400">{{ formatActivityDate(entry.created_at) }}</span>
                 </div>
               </div>
             </div>
@@ -354,31 +349,32 @@ const formatActivityDate = (date) =>
         </div>
 
         <!-- Bottom Actions -->
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-          <div class="flex items-center gap-2">
+        <div class="flex-none border-t border-slate-100 bg-white/80 pt-3 dark:border-slate-800 dark:bg-night-surface/80 sm:pt-4">
+          <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between">
+            <div class="col-span-2 grid grid-cols-2 gap-2 sm:col-span-1 sm:flex sm:items-center">
+              <button
+                type="button"
+                class="btn-secondary min-h-11 justify-center gap-1.5 text-xs sm:min-h-10 sm:w-auto"
+                @click="emit('edit', task)"
+              >
+                <AppIcon name="edit" :size="15" class="flex-none" /> <span>Edit</span>
+              </button>
+              <button
+                type="button"
+                class="btn-danger min-h-11 justify-center gap-1.5 text-xs sm:min-h-10 sm:w-auto"
+                @click="emit('delete', task)"
+              >
+                <AppIcon name="trash" :size="15" class="flex-none" /> <span>Delete</span>
+              </button>
+            </div>
             <button
               type="button"
-              class="btn-ghost"
-              @click="emit('edit', task)"
+              class="btn-ghost col-span-2 min-h-10 w-full justify-center text-xs sm:col-span-1 sm:w-auto"
+              @click="emit('close')"
             >
-              <AppIcon name="edit" :size="14" /> Edit Task
-            </button>
-            <button
-              type="button"
-              class="btn-ghost text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-              @click="emit('delete', task)"
-            >
-              <AppIcon name="trash" :size="14" /> Delete Task
+              Close Details
             </button>
           </div>
-
-          <button
-            type="button"
-            class="btn-secondary text-xs"
-            @click="emit('close')"
-          >
-            Close Details
-          </button>
         </div>
       </div>
     </div>
