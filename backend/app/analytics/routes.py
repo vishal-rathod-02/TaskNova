@@ -94,6 +94,89 @@ def latest_report():
     return jsonify({"report": report.to_dict()})
 
 
+@analytics_bp.get("/report/digest")
+@jwt_required()
+def report_digest():
+    user = require_current_user()
+    if not user:
+        return jsonify({"message": "Unauthorized or blocked user."}), 403
+
+    date_str = request.args.get("date")
+    if date_str:
+        try:
+            from datetime import date
+
+            target_date = date.fromisoformat(date_str)
+            report = DailyReport.query.filter_by(user_id=user.id, report_date=target_date).first()
+        except ValueError:
+            report = None
+    else:
+        report = DailyReport.query.filter_by(user_id=user.id).order_by(DailyReport.report_date.desc()).first()
+
+    course_palette = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#3b82f6"]
+    projects = Project.query.filter_by(owner_id=user.id).all()
+    courses_data = []
+    for idx, proj in enumerate(projects):
+        p_tasks = Task.query.filter_by(project_id=proj.id)
+        p_total = p_tasks.count()
+        if p_total > 0:
+            p_done = p_tasks.filter_by(status="done").count()
+            p_overdue = p_tasks.filter(Task.due_date.isnot(None), Task.due_date < utcnow(), Task.status != "done").count()
+            code_label = "".join([word[0].upper() for word in proj.name.split() if word])[:4] or proj.name[:4].upper()
+            courses_data.append(
+                {
+                    "id": proj.id,
+                    "name": proj.name,
+                    "code": code_label,
+                    "color": course_palette[idx % len(course_palette)],
+                    "total": p_total,
+                    "completed": p_done,
+                    "overdue": p_overdue,
+                    "percentage": round((p_done / p_total) * 100) if p_total else 0,
+                }
+            )
+
+
+    recent_done = (
+        Task.query.join(Project)
+        .filter(Project.owner_id == user.id, Task.status == "done")
+        .order_by(Task.updated_at.desc())
+        .limit(5)
+        .all()
+    )
+
+    urgent_tasks = (
+        Task.query.join(Project)
+        .filter(Project.owner_id == user.id, Task.status != "done", Task.due_date.isnot(None))
+        .order_by(Task.due_date.asc())
+        .limit(5)
+        .all()
+    )
+
+    if report:
+        report_dict = report.to_dict()
+    else:
+        now_date = utcnow().date()
+        base_query = Task.query.join(Project).filter(Project.owner_id == user.id)
+        total_cnt = base_query.count()
+        comp_cnt = base_query.filter(Task.status == "done").count()
+        overdue_cnt = base_query.filter(Task.due_date.isnot(None), Task.due_date < utcnow(), Task.status != "done").count()
+        from ..models.notification import _compute_digest_stats
+
+        report_dict = _compute_digest_stats(total_cnt, comp_cnt, overdue_cnt, now_date.isoformat())
+
+    return jsonify(
+        {
+            "digest": {
+                **report_dict,
+                "courses": courses_data,
+                "recent_completed": [t.to_dict() for t in recent_done],
+                "urgent_tasks": [t.to_dict() for t in urgent_tasks],
+            }
+        }
+    )
+
+
 @analytics_bp.get("/report/history")
 @jwt_required()
 def report_history():
@@ -101,10 +184,9 @@ def report_history():
     if not user:
         return jsonify({"message": "Unauthorized or blocked user."}), 403
     days = min(max(request.args.get("days", 7, type=int), 1), 30)
-    reports = (
-        DailyReport.query.filter_by(user_id=user.id).order_by(DailyReport.report_date.desc()).limit(days).all()
-    )
+    reports = DailyReport.query.filter_by(user_id=user.id).order_by(DailyReport.report_date.desc()).limit(days).all()
     return jsonify({"reports": [report.to_dict() for report in reports]})
+
 
 
 @analytics_bp.get("/admin")
