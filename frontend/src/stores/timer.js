@@ -56,6 +56,29 @@ const playAlarmTone = () => {
   }
 };
 
+// Soft pre-end warning (two gentle beeps) — played once per session
+const playWarningTone = () => {
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioCtx = new AudioContextClass();
+    [0, 0.22].forEach((delay) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(660, audioCtx.currentTime + delay);
+      gain.gain.setValueAtTime(0.18, audioCtx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + 0.18);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime + delay);
+      osc.stop(audioCtx.currentTime + delay + 0.18);
+    });
+  } catch {
+    // Audio policy ignore
+  }
+};
+
 export const useTimerStore = defineStore("timer", {
   state: () => ({
     currentMode: "focus",
@@ -64,6 +87,9 @@ export const useTimerStore = defineStore("timer", {
     isRunning: false,
     targetEndTime: null,
     sessionsCompleted: 0,
+    soundEnabled: localStorage.getItem("tasknova-timer-sound") !== "off",
+    warningThreshold: Number(localStorage.getItem("tasknova-timer-warn") || 30),
+    _warned: false,
   }),
 
   getters: {
@@ -91,12 +117,27 @@ export const useTimerStore = defineStore("timer", {
   },
 
   actions: {
+    toggleSound() {
+      this.soundEnabled = !this.soundEnabled;
+      try {
+        localStorage.setItem("tasknova-timer-sound", this.soundEnabled ? "on" : "off");
+      } catch { /* ignore */ }
+    },
+    setWarningThreshold(sec) {
+      this.warningThreshold = Number(sec) || 30;
+      try {
+        localStorage.setItem("tasknova-timer-warn", String(this.warningThreshold));
+      } catch { /* ignore */ }
+      this._warned = false;
+    },
     start() {
       if (this.isRunning) return;
 
       this.isRunning = true;
       this.targetEndTime = Date.now() + this.remainingSeconds * 1000;
       lastTickSecond = null;
+      // Re-arm warning if remaining is above threshold (fresh session / resume)
+      if (this.remainingSeconds > this.warningThreshold) this._warned = false;
 
       if (intervalId) clearInterval(intervalId);
 
@@ -106,6 +147,12 @@ export const useTimerStore = defineStore("timer", {
 
         if (diff > 0) {
           this.remainingSeconds = diff;
+          if (!this.soundEnabled) return;
+          // One-time soft warning when crossing the threshold
+          if (!this._warned && diff <= this.warningThreshold && diff > 10) {
+            this._warned = true;
+            playWarningTone();
+          }
           // Trigger audio tick when counting down below 10 seconds
           if (diff <= 10 && diff !== lastTickSecond) {
             lastTickSecond = diff;
@@ -141,6 +188,7 @@ export const useTimerStore = defineStore("timer", {
       const mode = MODES[this.currentMode] || MODES.focus;
       this.remainingSeconds = mode.duration;
       this.totalSeconds = mode.duration;
+      this._warned = false;
     },
 
     selectMode(modeId) {
@@ -149,11 +197,13 @@ export const useTimerStore = defineStore("timer", {
       this.currentMode = mode.id;
       this.totalSeconds = mode.duration;
       this.remainingSeconds = mode.duration;
+      this._warned = false;
     },
 
     onTimerCompleted() {
       this.pause();
-      playAlarmTone();
+      if (this.soundEnabled) playAlarmTone();
+      this._warned = false;
 
       if (this.currentMode === "focus") {
         this.sessionsCompleted += 1;

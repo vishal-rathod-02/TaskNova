@@ -74,46 +74,47 @@ const progressBarClass = computed(() => {
 <template>
   <Teleport to="body">
     <!-- Rigid modal backdrop: click does NOT close -->
-    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in">
+    <div v-if="isOpen" class="modal-backdrop z-50 animate-fade-in overflow-y-auto">
       <div
-        class="modal-panel max-w-md text-center animate-scale-in transition-all duration-300"
+        class="modal-panel my-auto flex max-h-[92vh] w-full max-w-md animate-scale-in flex-col overflow-hidden p-4 text-center transition-all duration-300 sm:p-6"
         :class="panelUrgencyClass"
         role="dialog"
         aria-modal="true"
       >
         <!-- Modal Top Header -->
-        <div class="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
-          <div class="flex items-center gap-2">
+        <div class="flex flex-none items-center justify-between gap-3 border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div class="flex min-w-0 flex-1 items-center gap-2">
             <div
-              class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+              class="flex h-8 w-8 flex-none items-center justify-center rounded-lg transition-colors"
               :class="timerStore.isUrgent
                 ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/70 dark:text-rose-300 animate-pulse'
                 : (timerStore.isEndingSoon ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/70 dark:text-amber-300' : 'bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300')"
             >
-              <AppIcon name="timer" :size="18" />
+              <AppIcon name="timer" :size="17" />
             </div>
-            <div>
-              <h3 class="font-display text-base font-bold text-slate-900 dark:text-white">Academic Focus Timer</h3>
-            </div>
+            <h3 class="min-w-0 flex-1 truncate text-left font-display text-sm font-bold text-slate-900 dark:text-white sm:text-base">Academic Focus Timer</h3>
           </div>
           <button
             type="button"
-            class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+            class="flex min-h-9 min-w-9 flex-none items-center justify-center rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
             title="Close modal (timer keeps running in background)"
+            aria-label="Close timer dialog"
             @click="emit('close')"
           >
             <AppIcon name="x" :size="18" />
           </button>
         </div>
 
+        <div class="min-h-0 flex-1 overflow-y-auto">
+
         <!-- Mode selector pills -->
-        <div class="mt-5 flex items-center justify-center gap-1.5 rounded-xl bg-slate-100 p-1 dark:bg-night-card">
+        <div class="mt-4 flex items-center justify-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-night-card sm:mt-5 sm:gap-1.5">
           <button
             v-for="mode in modes"
             :key="mode.id"
             type="button"
             :class="timerStore.currentMode === mode.id ? 'bg-white text-brand-700 shadow-sm font-bold dark:bg-slate-800 dark:text-white' : 'text-slate-600 dark:text-slate-400'"
-            class="flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all"
+            class="min-h-9 flex-1 truncate rounded-lg px-1 py-1.5 text-[11px] font-semibold transition-all sm:text-xs"
             @click="timerStore.selectMode(mode.id)"
           >
             {{ mode.label }}
@@ -121,7 +122,7 @@ const progressBarClass = computed(() => {
         </div>
 
         <!-- Large Timer Display with Countdown Pulse & Tick-Pop -->
-        <div class="relative my-7 flex flex-col items-center justify-center">
+        <div class="relative my-5 flex flex-col items-center justify-center sm:my-7">
           <!-- Urgent Countdown Alert Badge (< 15s / < 10s) -->
           <div
             v-if="timerStore.isUrgent"
@@ -139,7 +140,7 @@ const progressBarClass = computed(() => {
           <!-- Dynamic Digits with Tick-Pop Micro-Animation -->
           <div
             :key="timerStore.remainingSeconds"
-            class="font-mono text-6xl font-extrabold tracking-tight transition-all duration-150"
+            class="font-mono text-5xl font-extrabold tracking-tight transition-all duration-150 sm:text-6xl"
             :class="[
               digitsColorClass,
               timerStore.isUrgent ? 'animate-tick-pop' : ''
@@ -165,33 +166,70 @@ const progressBarClass = computed(() => {
           </div>
         </div>
 
+        <!-- Sound controls -->
+        <div class="mt-5 flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-left dark:border-slate-800 dark:bg-night-card/60 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              class="flex min-h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-all hover:bg-slate-100 dark:border-slate-700 dark:bg-night-surface dark:text-slate-300"
+              :title="timerStore.soundEnabled ? 'Mute timer sounds' : 'Unmute timer sounds'"
+              :aria-pressed="timerStore.soundEnabled"
+              @click="timerStore.toggleSound()"
+            >
+              <AppIcon :name="timerStore.soundEnabled ? 'bell' : 'x'" :size="15" />
+            </button>
+            <div class="min-w-0">
+              <p class="truncate text-xs font-bold text-slate-700 dark:text-slate-200">
+                {{ timerStore.soundEnabled ? "End sounds on" : "Muted" }}
+              </p>
+              <p class="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                Warn once + ticks 10s + chime
+              </p>
+            </div>
+          </div>
+          <label class="flex flex-none items-center gap-2 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+            <span class="whitespace-nowrap">Warn at</span>
+            <select
+              :value="timerStore.warningThreshold"
+              :disabled="!timerStore.soundEnabled"
+              class="min-h-9 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:bg-night-surface dark:text-slate-200"
+              @change="timerStore.setWarningThreshold($event.target.value)"
+            >
+              <option :value="15">15s</option>
+              <option :value="30">30s</option>
+              <option :value="60">60s</option>
+              <option :value="120">2m</option>
+            </select>
+          </label>
+        </div>
+
         <!-- Controls -->
-        <div class="flex items-center justify-center gap-3">
+        <div class="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-center sm:gap-3">
           <button
             v-if="!timerStore.isRunning"
             type="button"
-            class="btn-primary min-w-28 gap-2"
+            class="btn-primary min-h-11 w-full justify-center gap-2 sm:w-auto sm:min-w-28"
             @click="timerStore.start()"
           >
-            <AppIcon name="play" :size="16" /> Start Focus
+            <AppIcon name="play" :size="16" class="flex-none" /> Start Focus
           </button>
           <button
             v-else
             type="button"
-            class="btn-secondary min-w-28 gap-2"
+            class="btn-secondary min-h-11 w-full justify-center gap-2 sm:w-auto sm:min-w-28"
             :class="timerStore.isUrgent
               ? 'border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
               : 'border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400'"
             @click="timerStore.pause()"
           >
-            <AppIcon name="pause" :size="16" /> Pause
+            <AppIcon name="pause" :size="16" class="flex-none" /> Pause
           </button>
           <button
             type="button"
-            class="btn-secondary"
+            class="btn-secondary min-h-11 w-full justify-center sm:w-auto"
             @click="timerStore.reset()"
           >
-            <AppIcon name="refresh" :size="16" /> Reset
+            <AppIcon name="refresh" :size="16" class="flex-none" /> Reset
           </button>
         </div>
 
@@ -218,12 +256,13 @@ const progressBarClass = computed(() => {
             {{ timerStore.isUrgent ? 'Almost at the finish line! Hold your attention until the completion chime.' : randomTip }}
           </p>
         </div>
+        </div>
 
         <!-- Bottom Close Action -->
-        <div class="mt-5 border-t border-slate-100 pt-3 text-right dark:border-slate-800">
+        <div class="mt-4 flex-none border-t border-slate-100 pt-3 dark:border-slate-800 sm:text-right">
           <button
             type="button"
-            class="btn-secondary text-xs"
+            class="btn-secondary min-h-11 w-full justify-center text-xs sm:w-auto"
             @click="emit('close')"
           >
             Close Dialog
