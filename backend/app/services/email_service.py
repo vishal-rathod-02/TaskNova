@@ -3,43 +3,51 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-
-from flask import current_app
+from email.utils import parseaddr
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Absolute paths so loading works regardless of the process working directory.
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+
+
+def _load_env_files():
+    """Load .env.local then .env from the backend dir. Real host env vars win."""
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(_BACKEND_DIR / ".env.local", override=False)
+        load_dotenv(_BACKEND_DIR / ".env", override=False)
+    except Exception:
+        pass
+
+
+def _as_bool(value):
+    if value is None:
+        return False
+    return value.strip().lower() in ("1", "true", "yes", "on")
+
 
 def _get_mail_config():
-    """Retrieve mail configuration safely from current Flask app config or environment."""
+    """Read mail configuration from the environment only (no hardcoded defaults)."""
+    _load_env_files()
+    port_raw = (os.getenv("MAIL_PORT") or "").strip()
     try:
-        app_cfg = current_app.config
-        return {
-            "enabled": app_cfg.get("MAIL_ENABLED", False),
-            "server": app_cfg.get("MAIL_SERVER", "smtp.gmail.com"),
-            "port": int(app_cfg.get("MAIL_PORT", 587)),
-            "use_tls": app_cfg.get("MAIL_USE_TLS", True),
-            "use_ssl": app_cfg.get("MAIL_USE_SSL", False),
-            "username": app_cfg.get("MAIL_USERNAME", ""),
-            "password": app_cfg.get("MAIL_PASSWORD", ""),
-            "sender": app_cfg.get("MAIL_DEFAULT_SENDER", "TaskNova <tasknova.app@gmail.com>"),
-            "frontend_url": app_cfg.get("APP_FRONTEND_URL", "https://task-nova-app.vercel.app"),
-        }
-    except RuntimeError:
-        # Fallback when running outside Flask application context
-        from dotenv import load_dotenv
-        load_dotenv(".env.local")
-        load_dotenv(".env")
-        return {
-            "enabled": os.getenv("MAIL_ENABLED", "false").lower() == "true",
-            "server": os.getenv("MAIL_SERVER", "smtp.gmail.com"),
-            "port": int(os.getenv("MAIL_PORT", "587")),
-            "use_tls": os.getenv("MAIL_USE_TLS", "true").lower() == "true",
-            "use_ssl": os.getenv("MAIL_USE_SSL", "false").lower() == "true",
-            "username": os.getenv("MAIL_USERNAME", ""),
-            "password": os.getenv("MAIL_PASSWORD", ""),
-            "sender": os.getenv("MAIL_DEFAULT_SENDER", "TaskNova <tasknova.app@gmail.com>"),
-            "frontend_url": os.getenv("APP_FRONTEND_URL", "https://task-nova-app.vercel.app"),
-        }
+        port = int(port_raw) if port_raw else 0
+    except ValueError:
+        port = 0
+    return {
+        "enabled": _as_bool(os.getenv("MAIL_ENABLED")),
+        "server": (os.getenv("MAIL_SERVER") or "").strip(),
+        "port": port,
+        "use_tls": _as_bool(os.getenv("MAIL_USE_TLS")),
+        "use_ssl": _as_bool(os.getenv("MAIL_USE_SSL")),
+        "username": (os.getenv("MAIL_USERNAME") or "").strip(),
+        "password": (os.getenv("MAIL_PASSWORD") or "").strip().replace(" ", ""),
+        "sender": (os.getenv("MAIL_DEFAULT_SENDER") or "").strip(),
+        "frontend_url": (os.getenv("APP_FRONTEND_URL") or "").strip(),
+    }
 
 
 def send_email(to_email, subject, html_content, text_content=None):
@@ -55,6 +63,10 @@ def send_email(to_email, subject, html_content, text_content=None):
     if not cfg["username"] or not cfg["password"]:
         logger.warning("Email credentials missing (MAIL_USERNAME/MAIL_PASSWORD). Skipping dispatch to %s.", to_email)
         return False, "Missing SMTP username or password."
+
+    if not cfg["server"] or not cfg["port"] or not cfg["sender"]:
+        logger.warning("Incomplete SMTP configuration (MAIL_SERVER/MAIL_PORT/MAIL_DEFAULT_SENDER). Skipping dispatch to %s.", to_email)
+        return False, "Incomplete SMTP configuration: set MAIL_SERVER, MAIL_PORT and MAIL_DEFAULT_SENDER."
 
     try:
         msg = MIMEMultipart("alternative")
@@ -79,7 +91,12 @@ def send_email(to_email, subject, html_content, text_content=None):
                 server.starttls()
 
         server.login(cfg["username"], cfg["password"])
-        server.sendmail(cfg["sender"], [to_email], msg.as_string())
+        # Envelope-from must be a bare address (SPF/DKIM align on it).
+        # The display name stays only in the MIME From header above.
+        _, envelope_from = parseaddr(cfg["sender"])
+        if not envelope_from:
+            envelope_from = cfg["username"]
+        server.sendmail(envelope_from, [to_email], msg.as_string())
         server.quit()
 
         logger.info("Email successfully dispatched to %s with subject: '%s'", to_email, subject)
