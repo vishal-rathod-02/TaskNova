@@ -4,12 +4,75 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="TaskNova — Modern Academic & Student Workplace Productivity Suite" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TaskNova" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>TaskNova — Academic & Student Workplace Suite</title>
+    <style>
+      /* Boot splash: modern nova loader before Vue mounts (install/cold start) */
+      #boot-splash {
+        position: fixed; inset: 0; z-index: 9999;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 18px; background: #0b0f19;
+      }
+      #boot-splash .nova-orbit {
+        position: relative; width: 84px; height: 84px;
+      }
+      #boot-splash .nova-orbit::before,
+      #boot-splash .nova-orbit::after {
+        content: ""; position: absolute; inset: 0; border-radius: 9999px;
+        border: 3px solid transparent;
+      }
+      #boot-splash .nova-orbit::before {
+        border-top-color: #6366f1; border-right-color: #818cf8;
+        animation: nova-spin 1s linear infinite;
+      }
+      #boot-splash .nova-orbit::after {
+        inset: 10px;
+        border-bottom-color: #22d3ee; border-left-color: #a78bfa;
+        animation: nova-spin-rev 1.6s linear infinite;
+      }
+      #boot-splash .nova-core {
+        position: absolute; inset: 32px; border-radius: 9999px;
+        background: linear-gradient(135deg, #4f46e5, #818cf8);
+        box-shadow: 0 0 24px rgba(99, 102, 241, .65);
+        animation: nova-pulse 1.4s ease-in-out infinite;
+      }
+      #boot-splash .nova-word {
+        font-family: system-ui, sans-serif; font-size: 15px; font-weight: 800;
+        letter-spacing: .04em; color: #e2e8f0;
+      }
+      #boot-splash .nova-word span { color: #818cf8; }
+      #boot-splash .nova-bar {
+        width: 120px; height: 4px; border-radius: 9999px;
+        background: rgba(148, 163, 184, .2); overflow: hidden;
+      }
+      #boot-splash .nova-bar i {
+        display: block; height: 100%; width: 40%; border-radius: 9999px;
+        background: linear-gradient(90deg, #6366f1, #22d3ee);
+        animation: nova-slide 1.2s ease-in-out infinite;
+      }
+      @keyframes nova-spin { to { transform: rotate(360deg); } }
+      @keyframes nova-spin-rev { to { transform: rotate(-360deg); } }
+      @keyframes nova-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+      @keyframes nova-slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div id="boot-splash" aria-hidden="true">
+        <div class="nova-orbit"><div class="nova-core"></div></div>
+        <div class="nova-word">Task<span>Nova</span></div>
+        <div class="nova-bar"><i></i></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
