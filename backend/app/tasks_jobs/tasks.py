@@ -121,6 +121,7 @@ def run_daily_productivity_report():
             func.date(Notification.created_at) == today
         ).first()
         body = f"{completed} of {total} tasks done, {overdue} overdue on {today.isoformat()}."
+        is_new = existing is None
         if existing:
             existing.title = "Daily productivity report"
             existing.body = body
@@ -135,8 +136,10 @@ def run_daily_productivity_report():
             )
         reports_written += 1
 
-        # Dispatch daily digest email
-        if user.email:
+        # Dispatch daily digest email once per day (repeat triggers only refresh the inbox row)
+        if user.email and not is_new:
+            logger.info("Daily digest email already sent today to %s; skipping resend.", user.email)
+        if user.email and is_new:
             try:
                 digest_stats = report.to_dict()
                 send_daily_digest_email(
