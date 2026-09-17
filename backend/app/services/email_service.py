@@ -169,7 +169,13 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
     Render and dispatch a branded deadline warning or overdue alert email.
     """
     cfg = _get_mail_config()
-    app_url = cfg["frontend_url"]
+    app_url = (cfg["frontend_url"] or "").rstrip("/")
+    logo_url = f"{app_url}/TaskNova-mark.png" if app_url else ""
+    logo_img = (
+        f'<img src="{logo_url}" width="52" height="52" alt="TaskNova" '
+        'style="display: block; border: 0; margin-bottom: 10px;" />'
+        if logo_url else ""
+    )
     inbox_url = f"{app_url}/notifications"
     tasks_url = f"{app_url}/tasks"
 
@@ -198,6 +204,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
+                    {logo_img}
                     <span style="display: inline-block; background-color: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">
                       TaskNova Academic Alert
                     </span>
@@ -289,7 +296,13 @@ def send_daily_digest_email(user_email, user_name, digest_data):
     Render and dispatch a rich Daily Productivity Digest HTML email.
     """
     cfg = _get_mail_config()
-    app_url = cfg["frontend_url"]
+    app_url = (cfg["frontend_url"] or "").rstrip("/")
+    logo_url = f"{app_url}/TaskNova-mark.png" if app_url else ""
+    logo_img = (
+        f'<img src="{logo_url}" width="52" height="52" alt="TaskNova" '
+        'style="display: block; border: 0; margin-bottom: 10px;" />'
+        if logo_url else ""
+    )
     inbox_url = f"{app_url}/notifications"
 
     greeting_name = user_name or "Student"
@@ -325,6 +338,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
               <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
+                    {logo_img}
                     <div style="display: inline-block; background-color: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">
                       ✨ Daily Productivity Snapshot
                     </div>
