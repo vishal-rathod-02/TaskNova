@@ -62,10 +62,31 @@ def mark_all_notifications_read():
 
 @notifications_bp.route("/trigger-jobs", methods=["GET", "POST"])
 def trigger_jobs():
-    """Trigger background reminder and daily report generation on demand or via scheduled webhook."""
+    """Trigger reminder / report jobs via external cron.
+
+    Split schedules to stay under cron timeouts:
+      ?only=reminders  every 15 min (fast, few emails)
+      ?only=reports    once daily (slower, one digest per user)
+    Set CRON_SECRET env to require ?secret= or X-Cron-Secret header.
+    """
+    import os
+
+    secret = (os.getenv("CRON_SECRET") or "").strip()
+    if secret:
+        provided = (request.args.get("secret") or request.headers.get("X-Cron-Secret") or "").strip()
+        if provided != secret:
+            return jsonify({"message": "Forbidden."}), 403
+
+    only = (request.args.get("only") or "all").lower()
+    if only not in ("all", "reminders", "reports"):
+        return jsonify({"message": "Invalid 'only' param. Use reminders, reports or all."}), 400
+
     from ..tasks_jobs.tasks import run_daily_productivity_report, run_deadline_reminders
 
-    reminders = run_deadline_reminders()
-    reports = run_daily_productivity_report()
-    return jsonify({"status": "ok", "reminders": reminders, "reports": reports})
+    result = {"status": "ok"}
+    if only in ("all", "reminders"):
+        result["reminders"] = run_deadline_reminders()
+    if only in ("all", "reports"):
+        result["reports"] = run_daily_productivity_report()
+    return jsonify(result)
 
