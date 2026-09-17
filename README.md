@@ -233,6 +233,6 @@ npm run build
 
 ## 👤 Author & Acknowledgements
 
-* **Developer**: [Vishal Rathod](https://github.com/vishal-rathod-02)
-* **Portfolio**: [vishalrathod.tech](portfolio-vishal-rathod.vercel.app)
+* **Developer**: [Vishal Rathod](https://www.linkedin.com/in/vishalrathod02)
+* **Portfolio**: [vishalrathod.tech](https://portfolio-vishal-rathod.vercel.app)
 * **License**: MIT
