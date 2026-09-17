@@ -39,6 +39,8 @@ def _get_mail_config():
         port = 0
     return {
         "enabled": _as_bool(os.getenv("MAIL_ENABLED")),
+        "provider": (os.getenv("EMAIL_PROVIDER") or "smtp").strip().lower(),
+        "brevo_api_key": (os.getenv("BREVO_API_KEY") or "").strip(),
         "server": (os.getenv("MAIL_SERVER") or "").strip(),
         "port": port,
         "use_tls": _as_bool(os.getenv("MAIL_USE_TLS")),
@@ -50,6 +52,29 @@ def _get_mail_config():
     }
 
 
+def _send_via_brevo(api_key, sender_name, sender_email, to_email, subject, html_content, text_content=None):
+    """Deliver through Brevo HTTPS API (port 443 — works where SMTP is blocked)."""
+    import json
+    from urllib.request import Request, urlopen
+
+    payload = {
+        "sender": {"name": sender_name or sender_email, "email": sender_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content,
+    }
+    if text_content:
+        payload["textContent"] = text_content
+    req = Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"api-key": api_key, "Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    with urlopen(req, timeout=20) as resp:
+        return resp.status
+
+
 def send_email(to_email, subject, html_content, text_content=None):
     """
     Send an email via standard / Gmail SMTP.
@@ -59,6 +84,39 @@ def send_email(to_email, subject, html_content, text_content=None):
     if not cfg["enabled"]:
         logger.info("Email service disabled (MAIL_ENABLED=False). Skipping dispatch to %s.", to_email)
         return False, "Email service is disabled in configuration."
+
+    if cfg["provider"] == "brevo":
+        sender_name, sender_email = parseaddr(cfg["sender"])
+        if not sender_email and "@" in cfg["sender"]:
+            # Tolerate unbracketed "Name address" form: pull the bare address out.
+            import re
+
+            match = re.search(r"[\w.+-]+@[\w.-]+\.\w+", cfg["sender"])
+            if match:
+                sender_email = match.group(0)
+                if not sender_name:
+                    sender_name = cfg["sender"].replace(sender_email, "").strip(" <>")
+        if not cfg["brevo_api_key"]:
+            logger.warning("Brevo API key missing (BREVO_API_KEY). Skipping dispatch to %s.", to_email)
+            return False, "Missing Brevo API key."
+        if not sender_email:
+            logger.warning("Sender email missing (MAIL_DEFAULT_SENDER). Skipping dispatch to %s.", to_email)
+            return False, "Missing sender email in MAIL_DEFAULT_SENDER."
+        try:
+            _send_via_brevo(cfg["brevo_api_key"], sender_name, sender_email, to_email, subject, html_content, text_content)
+            logger.info("Email via Brevo dispatched to %s with subject: '%s'", to_email, subject)
+            return True, "Email sent successfully via Brevo."
+        except Exception as e:
+            detail = str(e)
+            try:
+                from urllib.error import HTTPError
+
+                if isinstance(e, HTTPError):
+                    detail = f"HTTP {e.code}: {e.read().decode('utf-8', 'replace')[:500]}"
+            except Exception:
+                pass
+            logger.error("Brevo send failed for %s: %s", to_email, detail)
+            return False, detail
 
     if not cfg["username"] or not cfg["password"]:
         logger.warning("Email credentials missing (MAIL_USERNAME/MAIL_PASSWORD). Skipping dispatch to %s.", to_email)
