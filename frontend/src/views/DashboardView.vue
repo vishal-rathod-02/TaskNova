@@ -10,6 +10,7 @@ import SkeletonLoader from "../components/SkeletonLoader.vue";
 import StudyHeatmap from "../components/StudyHeatmap.vue";
 import TaskModal from "../components/TaskModal.vue";
 import { showToast } from "../composables/toast";
+import { useAdminStore } from "../stores/admin";
 import { useAnalyticsStore } from "../stores/analytics";
 import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notifications";
@@ -17,6 +18,7 @@ import { useProjectStore } from "../stores/projects";
 import { useTaskStore } from "../stores/tasks";
 import { withMinLoading } from "../utils/async";
 
+const adminStore = useAdminStore();
 const analyticsStore = useAnalyticsStore();
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
@@ -31,6 +33,12 @@ const taskFormErrors = ref({});
 const stats = computed(() => analyticsStore.stats || {});
 const isEmpty = computed(() => !analyticsStore.loading && !authStore.isAdmin && stats.value.total_tasks === 0);
 const report = computed(() => notificationStore.latestReport);
+const latestUsers = computed(() => [...(adminStore.users || [])].sort((a, b) => b.id - a.id).slice(0, 4));
+const adminCompletionRate = computed(() => {
+  const total = stats.value.total_tasks || 0;
+  if (!total) return 0;
+  return Math.round(((stats.value.completed_tasks || 0) / total) * 100);
+});
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -43,10 +51,11 @@ const greeting = computed(() => {
 const loadDashboard = async () => {
   error.value = "";
   try {
-    await withMinLoading(
-      Promise.all([
-        analyticsStore.fetchStats(authStore.isAdmin),
-        authStore.isAdmin ? Promise.resolve() : notificationStore.fetchNotifications(),
+      await withMinLoading(
+        Promise.all([
+          analyticsStore.fetchStats(authStore.isAdmin),
+          authStore.isAdmin ? adminStore.fetchUsers().catch(() => {}) : Promise.resolve(),
+          authStore.isAdmin ? Promise.resolve() : notificationStore.fetchNotifications(),
         authStore.isAdmin ? Promise.resolve() : notificationStore.fetchLatestReport().catch(() => {}),
         projectStore.fetchProjects().catch(() => {}),
         authStore.isAdmin ? Promise.resolve() : taskStore.fetchTasks().catch(() => {}),
@@ -192,6 +201,61 @@ onMounted(loadDashboard);
           <AnimatedNumber :value="stats.activity_last_24h || 0" />
         </p>
         <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Recorded audit events</p>
+      </div>
+    </section>
+
+    <!-- Admin action row: governance links + workspace completion -->
+    <section v-if="authStore.isAdmin && analyticsStore.stats" class="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.7fr)]">
+      <!-- Governance shortcuts -->
+      <div class="surface-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <h2 class="section-title">Governance Actions</h2>
+          <AppIcon name="admin" :size="18" class="text-slate-400" />
+        </div>
+        <div class="mt-4 grid gap-2.5 sm:grid-cols-3">
+          <router-link to="/admin" class="btn-secondary min-h-11 justify-center gap-1.5 text-xs">
+            <AppIcon name="users" :size="15" class="flex-none" /> User Directory
+          </router-link>
+          <router-link to="/tasks" class="btn-secondary min-h-11 justify-center gap-1.5 text-xs">
+            <AppIcon name="tasks" :size="15" class="flex-none" /> Task Ledger
+          </router-link>
+          <router-link to="/notifications" class="btn-secondary min-h-11 justify-center gap-1.5 text-xs">
+            <AppIcon name="bell" :size="15" class="flex-none" /> Inbox
+            <span v-if="stats.overdue_tasks > 0" class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-extrabold text-white">{{ stats.overdue_tasks }}</span>
+          </router-link>
+        </div>
+        <div class="mt-4">
+          <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+            <span>Workspace completion</span>
+            <span class="font-mono font-bold text-slate-700 dark:text-slate-200">{{ adminCompletionRate }}%</span>
+          </div>
+          <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-emerald-500 transition-all duration-700" :style="{ width: `${adminCompletionRate}%` }"></div>
+          </div>
+          <p class="mt-2 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+            {{ stats.blocked_users || 0 }} blocked · {{ stats.total_projects || 0 }} projects · {{ stats.completed_tasks || 0 }}/{{ stats.total_tasks || 0 }} tasks done
+          </p>
+        </div>
+      </div>
+
+      <!-- Latest registered users -->
+      <div class="surface-card">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <h2 class="section-title">Latest Signups</h2>
+          <router-link to="/admin" class="text-xs font-semibold text-brand-600 hover:underline dark:text-brand-400">Directory &rarr;</router-link>
+        </div>
+        <div v-if="!latestUsers.length" class="py-6 text-center text-xs text-slate-400">No accounts yet.</div>
+        <div v-else class="mt-3 space-y-2">
+          <div v-for="u in latestUsers" :key="u.id" class="flex min-w-0 items-center gap-2.5 rounded-xl bg-slate-50 p-2.5 dark:bg-night-surface">
+            <span class="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-gradient-to-tr from-brand-600 to-indigo-500 font-display text-xs font-bold text-white">{{ (u.full_name || "U").charAt(0).toUpperCase() }}</span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-xs font-bold text-slate-900 dark:text-white">{{ u.full_name }}</span>
+              <span class="block truncate font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ u.email }}</span>
+            </span>
+            <span v-if="u.is_blocked" class="flex-none rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">Blocked</span>
+            <span v-else class="flex-none rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400">{{ u.role }}</span>
+          </div>
+        </div>
       </div>
     </section>
 
