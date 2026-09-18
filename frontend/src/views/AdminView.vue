@@ -7,6 +7,7 @@ import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
 import SkeletonLoader from "../components/SkeletonLoader.vue";
 import { showToast } from "../composables/toast";
+import { getAdminDashboard } from "../services/analytics";
 import { useAdminStore } from "../stores/admin";
 import { useAuthStore } from "../stores/auth";
 import { withMinLoading } from "../utils/async";
@@ -16,6 +17,8 @@ const authStore = useAuthStore();
 const error = ref("");
 const searchQuery = ref("");
 const roleFilter = ref("all");
+const sysStats = ref(null);
+const sysLoading = ref(false);
 
 // Modals
 const isBlockModalOpen = ref(false);
@@ -37,6 +40,24 @@ const loadUsers = async () => {
     error.value = requestError.response?.data?.message || "Unable to load user accounts.";
   }
 };
+
+const loadSysStats = async () => {
+  sysLoading.value = true;
+  try {
+    const { data } = await getAdminDashboard();
+    sysStats.value = data.stats;
+  } catch {
+    sysStats.value = null;
+  } finally {
+    sysLoading.value = false;
+  }
+};
+
+const sysCompletionRate = computed(() => {
+  const total = sysStats.value?.total_tasks || 0;
+  if (!total) return 0;
+  return Math.round(((sysStats.value?.completed_tasks || 0) / total) * 100);
+});
 
 const filteredUsers = computed(() => {
   return users.value.filter((u) => {
@@ -87,7 +108,10 @@ const confirmDelete = async () => {
   }
 };
 
-onMounted(loadUsers);
+onMounted(() => {
+  loadUsers();
+  loadSysStats();
+});
 </script>
 
 <template>
@@ -104,6 +128,47 @@ onMounted(loadUsers);
         </button>
       </template>
     </PageHeader>
+
+    <!-- System Health Overview (live from /api/analytics/admin) -->
+    <section aria-label="System health overview" class="mt-8">
+      <div v-if="sysLoading && !sysStats" class="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+        <div v-for="i in 6" :key="i" class="metric-card shimmer-skeleton min-h-24"></div>
+      </div>
+      <div v-else-if="sysStats" class="grid grid-cols-2 gap-2.5 lg:grid-cols-3">
+        <div class="metric-card p-4">
+          <p class="data-label">Registered Users</p>
+          <p class="metric-value mt-1 text-2xl sm:text-3xl">{{ sysStats.total_users }}</p>
+          <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ sysStats.active_users }} active · {{ sysStats.blocked_users }} blocked</p>
+        </div>
+        <div class="metric-card p-4">
+          <p class="data-label">Courses & Projects</p>
+          <p class="metric-value mt-1 text-2xl sm:text-3xl">{{ sysStats.total_projects }}</p>
+          <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">across workspace</p>
+        </div>
+        <div class="metric-card p-4">
+          <p class="data-label">Task Workload</p>
+          <p class="metric-value mt-1 text-2xl sm:text-3xl">{{ sysStats.total_tasks }}</p>
+          <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ sysStats.completed_tasks }} done ({{ sysCompletionRate }}%)</p>
+        </div>
+        <div class="metric-card p-4" :class="{ 'border-rose-200 dark:border-rose-900/50': sysStats.overdue_tasks > 0 }">
+          <p class="data-label" :class="{ 'text-rose-600 dark:text-rose-400': sysStats.overdue_tasks > 0 }">Overdue Tasks</p>
+          <p class="metric-value mt-1 text-2xl sm:text-3xl" :class="{ 'text-rose-600 dark:text-rose-400': sysStats.overdue_tasks > 0 }">{{ sysStats.overdue_tasks }}</p>
+          <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">{{ sysStats.overdue_tasks > 0 ? "needs attention" : "all clear" }}</p>
+        </div>
+        <div class="metric-card p-4">
+          <p class="data-label">Activity · 24h</p>
+          <p class="metric-value mt-1 text-2xl sm:text-3xl">{{ sysStats.activity_last_24h }}</p>
+          <p class="mt-1 font-mono text-[11px] text-slate-500 dark:text-slate-400">task events logged</p>
+        </div>
+        <div class="metric-card flex flex-col justify-center p-4">
+          <p class="data-label">Workspace Completion</p>
+          <div class="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-emerald-500 transition-all duration-500" :style="{ width: `${sysCompletionRate}%` }"></div>
+          </div>
+          <p class="mt-1.5 font-mono text-[11px] font-bold text-slate-600 dark:text-slate-300">{{ sysCompletionRate }}% of all tasks done</p>
+        </div>
+      </div>
+    </section>
 
     <!-- Search & Filter Controls -->
     <div class="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
