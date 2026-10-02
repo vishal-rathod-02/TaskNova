@@ -28,7 +28,6 @@
 ## 🌐 Live Production Links
 
 * 🖥️ **Live Web Application**: [https://task-nova-app.vercel.app](https://task-nova-app.vercel.app)
-* ⚡ **Production REST API**: [https://tasknova-api-odp5.onrender.com](https://tasknova-api-odp5.onrender.com)
 * 📦 **GitHub Repository**: [https://github.com/vishal-rathod-02/TaskNova](https://github.com/vishal-rathod-02/TaskNova)
 
 ---
