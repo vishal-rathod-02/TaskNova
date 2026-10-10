@@ -1,9 +1,24 @@
+import html
 import re
 from datetime import datetime, timezone
 
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 PRIORITIES = {"low", "medium", "high"}
 STATUSES = {"todo", "in_progress", "done"}
+SCRIPT_TAG_PATTERN = re.compile(r"<\s*script[^>]*>.*?<\s*/\s*script\s*>", re.IGNORECASE | re.DOTALL)
+UNSAFE_TAG_PATTERN = re.compile(r"<\s*(iframe|embed|object|meta|link|style)[^>]*>.*?<\s*/\s*\1\s*>", re.IGNORECASE | re.DOTALL)
+INLINE_EVT_PATTERN = re.compile(r"(?i)\s+on\w+\s*=\s*['\"][^'\"]*['\"]")
+
+
+def sanitize_text(value):
+    """Sanitize user-provided text by stripping script/embed tags, null characters, and inline event handlers."""
+    if value is None:
+        return None
+    val = str(value).replace("\x00", "")
+    val = SCRIPT_TAG_PATTERN.sub("", val)
+    val = UNSAFE_TAG_PATTERN.sub("", val)
+    val = INLINE_EVT_PATTERN.sub("", val)
+    return val.strip()
 
 
 def validation_error(errors):
@@ -26,7 +41,7 @@ def parse_iso_datetime(value):
 
 def validate_registration(payload):
     errors = {}
-    full_name = str(payload.get("full_name", "")).strip()
+    full_name = sanitize_text(payload.get("full_name", ""))
     email = str(payload.get("email", "")).lower().strip()
     password = str(payload.get("password", ""))
     if not 2 <= len(full_name) <= 120:
@@ -40,8 +55,8 @@ def validate_registration(payload):
 
 def validate_project(payload):
     errors = {}
-    name = str(payload.get("name", "")).strip()
-    description = str(payload.get("description", "")).strip() or None
+    name = sanitize_text(payload.get("name", ""))
+    description = sanitize_text(payload.get("description", "")) or None
     if not 1 <= len(name) <= 120:
         errors["name"] = "Enter a project name between 1 and 120 characters."
     if description and len(description) > 5000:
@@ -53,12 +68,12 @@ def validate_task(payload, partial=False):
     errors = {}
     data = {}
     if not partial or "title" in payload:
-        title = str(payload.get("title", "")).strip()
+        title = sanitize_text(payload.get("title", ""))
         if not 1 <= len(title) <= 160:
             errors["title"] = "Enter a task title between 1 and 160 characters."
         data["title"] = title
     if not partial or "description" in payload:
-        description = str(payload.get("description", "")).strip() or None
+        description = sanitize_text(payload.get("description", "")) or None
         if description and len(description) > 10000:
             errors["description"] = "Description must be 10000 characters or fewer."
         data["description"] = description
@@ -88,3 +103,4 @@ def validate_task(payload, partial=False):
             errors["project_id"] = "Select a valid project."
         data["project_id"] = project_id
     return data, errors
+
