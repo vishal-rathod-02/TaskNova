@@ -24,7 +24,12 @@ def list_projects():
     user, error_response = _current_user_or_error()
     if error_response:
         return error_response
-    projects = Project.query.filter_by(owner_id=user.id).order_by(Project.created_at.desc()).all()
+    projects = (
+        Project.query.options(db.selectinload(Project.tasks))
+        .filter_by(owner_id=user.id)
+        .order_by(Project.created_at.desc())
+        .all()
+    )
     return jsonify({"projects": [project.to_dict(include_task_count=True) for project in projects]})
 
 
@@ -103,7 +108,10 @@ def list_project_tasks(project_id):
         return error_response
     page = max(request.args.get("page", 1, type=int), 1)
     per_page = min(max(request.args.get("per_page", 50, type=int), 1), 100)
-    query = apply_task_filters(Task.query.filter_by(project_id=project.id), request.args).order_by(Task.due_date.is_(None), Task.due_date.asc())
+    query = (
+        apply_task_filters(Task.query.options(db.joinedload(Task.project)).filter_by(project_id=project.id), request.args)
+        .order_by(Task.due_date.is_(None), Task.due_date.asc())
+    )
     result = query.paginate(page=page, per_page=per_page, error_out=False)
     return jsonify(
         {

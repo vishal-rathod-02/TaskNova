@@ -28,7 +28,7 @@ def list_tasks():
     user = require_current_user()
     if not user:
         return jsonify({"message": "Unauthorized or blocked user."}), 403
-    query = Task.query.join(Project).filter(Project.owner_id == user.id)
+    query = Task.query.options(db.joinedload(Task.project)).join(Project).filter(Project.owner_id == user.id)
     project_id = request.args.get("project_id", type=int)
     if project_id:
         query = query.filter(Task.project_id == project_id)
