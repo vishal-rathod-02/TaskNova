@@ -30,25 +30,41 @@ def _as_bool(value):
 
 
 def _get_mail_config():
-    """Read mail configuration from the environment only (no hardcoded defaults)."""
+    """Read mail configuration from current_app.config if available, falling back to environment."""
+    from flask import current_app, has_app_context
+
     _load_env_files()
-    port_raw = (os.getenv("MAIL_PORT") or "").strip()
+
+    def get_val(key, default=""):
+        if has_app_context() and key in current_app.config:
+            val = current_app.config.get(key)
+            return val if val is not None else default
+        return os.getenv(key, default)
+
+    enabled_val = get_val("MAIL_ENABLED", False)
+    if isinstance(enabled_val, bool):
+        is_enabled = enabled_val
+    else:
+        is_enabled = _as_bool(str(enabled_val))
+
+    port_raw = str(get_val("MAIL_PORT", 0)).strip()
     try:
         port = int(port_raw) if port_raw else 0
     except ValueError:
         port = 0
+
     return {
-        "enabled": _as_bool(os.getenv("MAIL_ENABLED")),
-        "provider": (os.getenv("EMAIL_PROVIDER") or "smtp").strip().lower(),
-        "brevo_api_key": (os.getenv("BREVO_API_KEY") or "").strip(),
-        "server": (os.getenv("MAIL_SERVER") or "").strip(),
+        "enabled": is_enabled,
+        "provider": str(get_val("EMAIL_PROVIDER", "smtp")).strip().lower(),
+        "brevo_api_key": str(get_val("BREVO_API_KEY", "")).strip(),
+        "server": str(get_val("MAIL_SERVER", "")).strip(),
         "port": port,
-        "use_tls": _as_bool(os.getenv("MAIL_USE_TLS")),
-        "use_ssl": _as_bool(os.getenv("MAIL_USE_SSL")),
-        "username": (os.getenv("MAIL_USERNAME") or "").strip(),
-        "password": (os.getenv("MAIL_PASSWORD") or "").strip().replace(" ", ""),
-        "sender": (os.getenv("MAIL_DEFAULT_SENDER") or "").strip(),
-        "frontend_url": (os.getenv("APP_FRONTEND_URL") or "").strip(),
+        "use_tls": _as_bool(str(get_val("MAIL_USE_TLS", "false"))) if not isinstance(get_val("MAIL_USE_TLS"), bool) else get_val("MAIL_USE_TLS"),
+        "use_ssl": _as_bool(str(get_val("MAIL_USE_SSL", "false"))) if not isinstance(get_val("MAIL_USE_SSL"), bool) else get_val("MAIL_USE_SSL"),
+        "username": str(get_val("MAIL_USERNAME", "")).strip(),
+        "password": str(get_val("MAIL_PASSWORD", "")).strip().replace(" ", ""),
+        "sender": str(get_val("MAIL_DEFAULT_SENDER", "")).strip(),
+        "frontend_url": str(get_val("APP_FRONTEND_URL", "")).strip(),
     }
 
 
