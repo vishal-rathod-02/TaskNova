@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required
+from flask_jwt_extended import create_access_token, create_refresh_token, decode_token, get_jwt, jwt_required
 
-from ..extensions import db
+from ..extensions import add_token_to_blocklist, db
 from ..models import User
 from ..utils.auth import require_current_user
 from ..utils.rate_limit import rate_limit
@@ -30,6 +30,7 @@ def register():
 
     user = User(full_name=data["full_name"], email=data["email"], role="user")
     user.set_password(data["password"])
+    user.ensure_calendar_token()
     db.session.add(user)
     db.session.commit()
     return jsonify({"user": user.to_dict()}), 201
@@ -46,6 +47,8 @@ def login():
         return jsonify({"message": "Invalid email or password."}), 401
     if user.is_blocked:
         return jsonify({"message": "Your account is blocked. Contact an administrator."}), 403
+    user.ensure_calendar_token()
+    db.session.commit()
     return jsonify({**_tokens_for(user), "user": user.to_dict()})
 
 
@@ -65,3 +68,52 @@ def me():
     if not user:
         return jsonify({"message": "Unauthorized or blocked user."}), 403
     return jsonify({"user": user.to_dict()})
+
+
+@auth_bp.post("/logout")
+@jwt_required(verify_type=False)
+def logout():
+    jwt_data = get_jwt()
+    jti = jwt_data.get("jti")
+    if jti:
+        add_token_to_blocklist(jti)
+
+    payload = request.get_json(silent=True) or {}
+    extra_token = payload.get("refresh_token")
+    if extra_token:
+        try:
+            decoded = decode_token(extra_token)
+            extra_jti = decoded.get("jti")
+            if extra_jti:
+                add_token_to_blocklist(extra_jti)
+        except Exception:
+            pass
+
+    return jsonify({"message": "Successfully logged out and session revoked."})
+
+
+@auth_bp.patch("/preferences")
+@jwt_required()
+def update_preferences():
+    user = require_current_user()
+    if not user:
+        return jsonify({"message": "Unauthorized or blocked user."}), 403
+    payload = request.get_json(silent=True) or {}
+    if "email_digest_enabled" in payload:
+        user.email_digest_enabled = bool(payload["email_digest_enabled"])
+    if "email_alerts_enabled" in payload:
+        user.email_alerts_enabled = bool(payload["email_alerts_enabled"])
+    db.session.commit()
+    return jsonify({"user": user.to_dict(), "message": "Notification preferences updated."})
+
+
+@auth_bp.post("/calendar-token/regenerate")
+@jwt_required()
+def regenerate_calendar_token():
+    user = require_current_user()
+    if not user:
+        return jsonify({"message": "Unauthorized or blocked user."}), 403
+    token = user.regenerate_calendar_token()
+    db.session.commit()
+    return jsonify({"calendar_token": token, "user": user.to_dict()})
+
