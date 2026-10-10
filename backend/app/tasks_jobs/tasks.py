@@ -69,9 +69,9 @@ def run_deadline_reminders():
         logger.info("Deadline reminder queued for owner=%s task=%s due=%s", task.project.owner_id, task.id, task.due_date.isoformat())
         notified += 1
 
-        # Dispatch email alert if owner has an email
+        # Dispatch email alert if owner has an email and alerts enabled
         owner = db.session.get(User, task.project.owner_id)
-        if owner and owner.email:
+        if owner and owner.email and getattr(owner, "email_alerts_enabled", True):
             try:
                 send_deadline_email(
                     user_email=owner.email,
@@ -136,10 +136,25 @@ def run_daily_productivity_report():
             )
         reports_written += 1
 
-        # Dispatch daily digest email once per day (repeat triggers only refresh the inbox row)
+        # Determine if workload stats or task progress changed since the previous report
+        prev_report = (
+            DailyReport.query.filter(DailyReport.user_id == user.id, DailyReport.report_date < today)
+            .order_by(DailyReport.report_date.desc())
+            .first()
+        )
+        has_changes = (
+            prev_report is None
+            or prev_report.total_tasks != total
+            or prev_report.completed_tasks != completed
+            or prev_report.overdue_tasks != overdue
+        )
+
+        # Dispatch daily digest email once per day if enabled AND workload has changed
         if user.email and not is_new:
             logger.info("Daily digest email already sent today to %s; skipping resend.", user.email)
-        if user.email and is_new:
+        elif user.email and is_new and not has_changes:
+            logger.info("Daily digest email skipped for %s: no new task progress or status changes since previous report (%s).", user.email, prev_report.report_date)
+        elif user.email and is_new and has_changes and getattr(user, "email_digest_enabled", True):
             try:
                 digest_stats = report.to_dict()
                 send_daily_digest_email(
