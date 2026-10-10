@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import AppIcon from "./AppIcon.vue";
 import AppLoader from "./AppLoader.vue";
 import { getReportDigest } from "../services/analytics";
+import { printDailyDigest } from "../utils/export";
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -94,7 +95,7 @@ const goToTasks = () => {
 };
 
 const printDigest = () => {
-  window.print();
+  printDailyDigest(digest.value, props.reportDate);
 };
 
 const onKeydown = (e) => {
