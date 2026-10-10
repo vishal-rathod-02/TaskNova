@@ -31,29 +31,48 @@ def _ensure_database_schema(app):
         with app.app_context():
             db.create_all()
             inspector = inspect(db.engine)
-            if "user" in inspector.get_table_names():
+            table_names = set(inspector.get_table_names())
+            if "user" in table_names:
                 columns = {col["name"] for col in inspector.get_columns("user")}
+                dialect = db.engine.dialect.name.lower()
+                table_ref = '"user"'
+                bool_default = "TRUE" if dialect == "postgresql" else "1"
+
                 with db.engine.connect() as conn:
                     if "email_digest_enabled" not in columns:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN email_digest_enabled BOOLEAN NOT NULL DEFAULT 1"))
-                        conn.commit()
-                        app.logger.info("Auto-migrated schema: added user.email_digest_enabled")
-                    if "email_alerts_enabled" not in columns:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN email_alerts_enabled BOOLEAN NOT NULL DEFAULT 1"))
-                        conn.commit()
-                        app.logger.info("Auto-migrated schema: added user.email_alerts_enabled")
-                    if "calendar_token" not in columns:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN calendar_token VARCHAR(64)"))
-                        conn.commit()
-                        app.logger.info("Auto-migrated schema: added user.calendar_token")
+                        try:
+                            conn.execute(text(f"ALTER TABLE {table_ref} ADD COLUMN email_digest_enabled BOOLEAN NOT NULL DEFAULT {bool_default}"))
+                            conn.commit()
+                            app.logger.info("Auto-migrated schema: added user.email_digest_enabled")
+                        except Exception as e:
+                            app.logger.warning("Could not add email_digest_enabled: %s", e)
 
-                legacy_users = User.query.filter((User.calendar_token == None) | (User.calendar_token == "")).all()
-                if legacy_users:
-                    for u in legacy_users:
-                        u.calendar_token = secrets.token_urlsafe(32)
-                    db.session.commit()
+                    if "email_alerts_enabled" not in columns:
+                        try:
+                            conn.execute(text(f"ALTER TABLE {table_ref} ADD COLUMN email_alerts_enabled BOOLEAN NOT NULL DEFAULT {bool_default}"))
+                            conn.commit()
+                            app.logger.info("Auto-migrated schema: added user.email_alerts_enabled")
+                        except Exception as e:
+                            app.logger.warning("Could not add email_alerts_enabled: %s", e)
+
+                    if "calendar_token" not in columns:
+                        try:
+                            conn.execute(text(f"ALTER TABLE {table_ref} ADD COLUMN calendar_token VARCHAR(64)"))
+                            conn.commit()
+                            app.logger.info("Auto-migrated schema: added user.calendar_token")
+                        except Exception as e:
+                            app.logger.warning("Could not add calendar_token: %s", e)
+
+                try:
+                    legacy_users = User.query.filter((User.calendar_token == None) | (User.calendar_token == "")).all()
+                    if legacy_users:
+                        for u in legacy_users:
+                            u.calendar_token = secrets.token_urlsafe(32)
+                        db.session.commit()
+                except Exception as e:
+                    app.logger.warning("Calendar token backfill notice: %s", e)
     except Exception as exc:
-        app.logger.warning("Database schema auto-sync notice: %s", exc)
+        app.logger.error("Database schema auto-sync failed: %s", exc, exc_info=True)
 
 
 def _bootstrap_admin(app):
