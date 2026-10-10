@@ -10,6 +10,10 @@ def init_celery(app):
         result_backend=app.config["CELERY_RESULT_BACKEND"],
         timezone="UTC",
         task_track_started=True,
+        task_time_limit=180,
+        task_soft_time_limit=120,
+        worker_prefetch_multiplier=1,
+        task_acks_late=True,
         beat_schedule={
             "send-deadline-reminders": {
                 "task": "app.tasks_jobs.tasks.send_deadline_reminders",

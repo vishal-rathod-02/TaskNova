@@ -27,11 +27,26 @@ def _database_url():
     return url
 
 
+def _engine_options(url):
+    options = {"pool_pre_ping": True}
+    if not url.startswith("sqlite"):
+        options.update(
+            {
+                "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+                "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "20")),
+                "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "300")),
+                "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+            }
+        )
+    return options
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
-    SQLALCHEMY_DATABASE_URI = _database_url()
+    db_uri = _database_url()
+    SQLALCHEMY_DATABASE_URI = db_uri
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_options(db_uri)
 
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-jwt-secret")
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=int(os.getenv("JWT_ACCESS_TTL", "15")))
