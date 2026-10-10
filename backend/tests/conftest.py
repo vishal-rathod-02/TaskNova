@@ -12,6 +12,7 @@ def app():
             "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
             "AUTO_CREATE_DB": False,
             "REDIS_URL": "redis://127.0.0.1:6399/0",
+            "MAIL_ENABLED": False,
         }
     )
     with app.app_context():

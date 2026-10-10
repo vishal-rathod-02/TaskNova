@@ -10,16 +10,21 @@ import SkeletonLoader from "../components/SkeletonLoader.vue";
 import TaskDetailModal from "../components/TaskDetailModal.vue";
 import TaskModal from "../components/TaskModal.vue";
 import { showToast } from "../composables/toast";
+import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notifications";
 import { useProjectStore } from "../stores/projects";
 import { useTaskStore } from "../stores/tasks";
 import { withMinLoading } from "../utils/async";
 
+const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
 const taskStore = useTaskStore();
 const projectStore = useProjectStore();
 const error = ref("");
 const selectedFilter = ref("all"); // 'all' | 'unread' | 'deadlines' | 'reports'
+
+const isPreferencesModalOpen = ref(false);
+const isSavingPreferences = ref(false);
 
 const isMarkAllModalOpen = ref(false);
 const markAllLoading = ref(false);
@@ -52,11 +57,42 @@ const loadNotifications = async () => {
   error.value = "";
   try {
     await withMinLoading(
-      notificationStore.fetchNotifications(selectedFilter.value === "unread"),
+      Promise.all([
+        notificationStore.fetchNotifications(selectedFilter.value === "unread"),
+        authStore.fetchCurrentUser(),
+      ]),
       1800
     );
   } catch (requestError) {
     error.value = requestError.response?.data?.message || "Unable to load notifications.";
+  }
+};
+
+const toggleEmailAlerts = async () => {
+  if (!authStore.user) return;
+  const nextVal = !authStore.user.email_alerts_enabled;
+  isSavingPreferences.value = true;
+  try {
+    await authStore.updatePreferences({ email_alerts_enabled: nextVal });
+    showToast(`Email alerts ${nextVal ? "enabled" : "disabled"}.`);
+  } catch (err) {
+    showToast(err.response?.data?.message || "Failed to update preference.");
+  } finally {
+    isSavingPreferences.value = false;
+  }
+};
+
+const toggleEmailDigest = async () => {
+  if (!authStore.user) return;
+  const nextVal = !authStore.user.email_digest_enabled;
+  isSavingPreferences.value = true;
+  try {
+    await authStore.updatePreferences({ email_digest_enabled: nextVal });
+    showToast(`Daily digest email ${nextVal ? "enabled" : "disabled"}.`);
+  } catch (err) {
+    showToast(err.response?.data?.message || "Failed to update preference.");
+  } finally {
+    isSavingPreferences.value = false;
   }
 };
 
@@ -219,6 +255,13 @@ onMounted(async () => {
       :badge="`${notificationStore.unreadCount} Unread`"
     >
       <template #actions>
+        <button
+          class="btn-secondary gap-2"
+          type="button"
+          @click="isPreferencesModalOpen = true"
+        >
+          <AppIcon name="sparkles" :size="16" /> Email Preferences
+        </button>
         <button
           class="btn-secondary gap-2"
           type="button"
@@ -556,5 +599,85 @@ onMounted(async () => {
       @cancel="isMarkAllModalOpen = false"
       @confirm="confirmMarkAll"
     />
+
+    <!-- Email Notification Preferences Modal -->
+    <div
+      v-if="isPreferencesModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+      @click.self="isPreferencesModalOpen = false"
+    >
+      <div class="w-full max-w-md rounded-3xl border border-slate-200/90 bg-white/95 p-6 shadow-2xl backdrop-blur-xl dark:border-slate-800 dark:bg-night-surface/95 sm:p-8 space-y-6">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-950/70 dark:text-brand-300">
+              <AppIcon name="bell" :size="22" />
+            </div>
+            <div>
+              <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">Email Preferences</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Manage automated emails dispatched to your inbox</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            @click="isPreferencesModalOpen = false"
+          >
+            <AppIcon name="close" :size="18" />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Urgent Deadline Alerts -->
+          <div class="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <div class="pr-3">
+              <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Urgent Deadline Alerts</span>
+              <span class="block text-xs text-slate-500 dark:text-slate-400">Receive alerts for tasks due within 24 hours or overdue.</span>
+            </div>
+            <button
+              type="button"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+              :class="authStore.user?.email_alerts_enabled ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'"
+              :disabled="isSavingPreferences"
+              @click="toggleEmailAlerts"
+            >
+              <span
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                :class="authStore.user?.email_alerts_enabled ? 'translate-x-5' : 'translate-x-0'"
+              />
+            </button>
+          </div>
+
+          <!-- Daily Productivity Digest -->
+          <div class="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <div class="pr-3">
+              <span class="block text-sm font-bold text-slate-800 dark:text-slate-200">Daily Productivity Digest</span>
+              <span class="block text-xs text-slate-500 dark:text-slate-400">Receive morning workload summaries and momentum score.</span>
+            </div>
+            <button
+              type="button"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+              :class="authStore.user?.email_digest_enabled ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'"
+              :disabled="isSavingPreferences"
+              @click="toggleEmailDigest"
+            >
+              <span
+                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                :class="authStore.user?.email_digest_enabled ? 'translate-x-5' : 'translate-x-0'"
+              />
+            </button>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+          <button
+            type="button"
+            class="btn-primary py-2 px-5 text-xs font-bold"
+            @click="isPreferencesModalOpen = false"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

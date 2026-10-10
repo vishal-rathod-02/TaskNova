@@ -147,3 +147,99 @@ def test_email_service_safe_fallback_and_formatting(app):
         assert digest_res is False
         assert "disabled" in digest_msg.lower()
 
+
+def test_auth_logout_revokes_token_immediately(client):
+    account = {"full_name": "Security User", "email": "secuser@example.com", "password": "securepass"}
+    assert client.post("/api/auth/register", json=account).status_code == 201
+
+    login_res = client.post("/api/auth/login", json={"email": account["email"], "password": account["password"]})
+    assert login_res.status_code == 200
+    token = login_res.json["access_token"]
+    refresh_tok = login_res.json["refresh_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Verify access token works initially
+    me_res = client.get("/api/auth/me", headers=headers)
+    assert me_res.status_code == 200
+
+    # Call logout to revoke token
+    logout_res = client.post("/api/auth/logout", headers=headers, json={"refresh_token": refresh_tok})
+    assert logout_res.status_code == 200
+    assert "revoked" in logout_res.json["message"].lower()
+
+    # Re-calling me with the revoked token must fail with 401
+    me_after = client.get("/api/auth/me", headers=headers)
+    assert me_after.status_code == 401
+
+
+def test_user_preferences_and_calendar_token_flow(client):
+    account = {"full_name": "Cal User", "email": "caluser@example.com", "password": "securepass"}
+    assert client.post("/api/auth/register", json=account).status_code == 201
+    headers = auth_header(client, account["email"], account["password"])
+
+    # Check default preferences
+    me_res = client.get("/api/auth/me", headers=headers)
+    user_data = me_res.json["user"]
+    assert user_data["email_digest_enabled"] is True
+    assert user_data["email_alerts_enabled"] is True
+    old_token = user_data["calendar_token"]
+    assert bool(old_token)
+
+    # Update preferences
+    patch_res = client.patch(
+        "/api/auth/preferences",
+        headers=headers,
+        json={"email_digest_enabled": False, "email_alerts_enabled": False},
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json["user"]["email_digest_enabled"] is False
+    assert patch_res.json["user"]["email_alerts_enabled"] is False
+
+    # Regenerate calendar token
+    regen_res = client.post("/api/auth/calendar-token/regenerate", headers=headers)
+    assert regen_res.status_code == 200
+    new_token = regen_res.json["calendar_token"]
+    assert new_token != old_token
+
+
+def test_calendar_feed_ics_generation(client):
+    account = {"full_name": "Feed Student", "email": "feedstudent@example.com", "password": "securepass"}
+    assert client.post("/api/auth/register", json=account).status_code == 201
+    headers = auth_header(client, account["email"], account["password"])
+
+    user_info = client.get("/api/auth/me", headers=headers).json["user"]
+    cal_token = user_info["calendar_token"]
+
+    project = client.post("/api/projects", headers=headers, json={"name": "CS101", "description": "Intro to Computer Science"})
+    project_id = project.json["project"]["id"]
+
+    client.post(
+        "/api/tasks",
+        headers=headers,
+        json={"project_id": project_id, "title": "Lab 1 Submission", "priority": "high", "due_date": "2026-11-15T23:59:00"},
+    )
+
+    # Public ICS calendar feed retrieval
+    feed_res = client.get(f"/api/calendar/feed/{cal_token}.ics")
+    assert feed_res.status_code == 200
+    assert "text/calendar" in feed_res.content_type
+    ics_text = feed_res.get_data(as_text=True)
+    assert "BEGIN:VCALENDAR" in ics_text
+    assert "BEGIN:VEVENT" in ics_text
+    assert "Lab 1 Submission" in ics_text
+    assert "CS101" in ics_text
+    assert "END:VCALENDAR" in ics_text
+
+    # Invalid token check
+    assert client.get("/api/calendar/feed/invalid-token-123.ics").status_code == 404
+
+
+def test_owasp_security_headers_present(client):
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.headers.get("X-Content-Type-Options") == "nosniff"
+    assert res.headers.get("X-Frame-Options") == "DENY"
+    assert res.headers.get("X-XSS-Protection") == "1; mode=block"
+    assert res.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+
+
