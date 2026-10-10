@@ -23,6 +23,9 @@ class Task(db.Model):
     creator = db.relationship("User", back_populates="created_tasks", foreign_keys=[created_by])
     activity_logs = db.relationship("ActivityLog", back_populates="task", lazy="select", cascade="all, delete-orphan")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self):
         return {
             "id": self.id,

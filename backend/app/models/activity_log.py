@@ -18,6 +18,9 @@ class ActivityLog(db.Model):
     task = db.relationship("Task", back_populates="activity_logs")
     actor = db.relationship("User", back_populates="activity_logs")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self):
         try:
             detail = json.loads(self.details) if self.details else None

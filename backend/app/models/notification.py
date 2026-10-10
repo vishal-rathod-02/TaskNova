@@ -59,6 +59,9 @@ class Notification(db.Model):
 
     user = db.relationship("User", back_populates="notifications")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self):
         data = {
             "id": self.id,
@@ -100,6 +103,9 @@ class DailyReport(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
     user = db.relationship("User", back_populates="daily_reports")
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def to_dict(self):
         stats = _compute_digest_stats(

@@ -14,6 +14,9 @@ class Project(db.Model):
     owner = db.relationship("User", back_populates="projects")
     tasks = db.relationship("Task", back_populates="project", lazy="select", cascade="all, delete-orphan")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     def to_dict(self, include_task_count=False):
         payload = {
             "id": self.id,
