@@ -1,5 +1,13 @@
 import { defineStore } from "pinia";
-import { fetchCurrentUser, loginUser, refreshAccessToken, registerUser } from "../services/auth";
+import {
+  fetchCurrentUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  regenerateCalendarToken,
+  registerUser,
+  updateUserPreferences,
+} from "../services/auth";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -10,6 +18,16 @@ export const useAuthStore = defineStore("auth", {
   getters: {
     isAuthenticated: (state) => !!state.accessToken,
     isAdmin: (state) => state.user?.role === "admin",
+    calendarFeedUrl: (state) => {
+      if (!state.user?.calendar_token) return "";
+      const base = window.location.origin;
+      return `${base}/api/calendar/feed/${state.user.calendar_token}.ics`;
+    },
+    webcalFeedUrl: (state) => {
+      if (!state.user?.calendar_token) return "";
+      const host = window.location.host;
+      return `webcal://${host}/api/calendar/feed/${state.user.calendar_token}.ics`;
+    },
   },
   actions: {
     async register(payload) {
@@ -28,18 +46,38 @@ export const useAuthStore = defineStore("auth", {
       const { data } = await fetchCurrentUser();
       this.user = data.user;
     },
+    async updatePreferences(payload) {
+      const { data } = await updateUserPreferences(payload);
+      this.user = data.user;
+      return data;
+    },
+    async regenerateCalendarToken() {
+      const { data } = await regenerateCalendarToken();
+      if (this.user) {
+        this.user.calendar_token = data.calendar_token;
+      }
+      return data.calendar_token;
+    },
     async refreshAccessToken() {
       if (!this.refreshToken) throw new Error("No refresh token");
       const { data } = await refreshAccessToken(this.refreshToken);
       this.accessToken = data.access_token;
       localStorage.setItem("access_token", this.accessToken);
     },
-    logout() {
-      this.user = null;
-      this.accessToken = "";
-      this.refreshToken = "";
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+    async logout() {
+      try {
+        if (this.accessToken || this.refreshToken) {
+          await logoutUser({ refresh_token: this.refreshToken });
+        }
+      } catch (err) {
+        // Continue local cleanup even if offline
+      } finally {
+        this.user = null;
+        this.accessToken = "";
+        this.refreshToken = "";
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+      }
     },
   },
 });
