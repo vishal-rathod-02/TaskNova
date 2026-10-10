@@ -1,3 +1,5 @@
+from app.models import DailyReport
+from app.models import Notification
 import json
 import logging
 from time import perf_counter
@@ -7,6 +9,7 @@ from flask import Flask, g, jsonify, request
 from .admin import admin_bp
 from .analytics import analytics_bp
 from .auth import auth_bp
+from .calendar import calendar_bp
 from .celery_app import init_celery
 from .commands import register_commands
 from .config import Config
@@ -18,6 +21,40 @@ from .tasks import tasks_bp
 
 
 import os
+import secrets
+from sqlalchemy import inspect, text
+
+
+def _ensure_database_schema(app):
+    """Safely apply schema additions for existing SQLite/PostgreSQL tables without breaking existing data."""
+    try:
+        with app.app_context():
+            db.create_all()
+            inspector = inspect(db.engine)
+            if "user" in inspector.get_table_names():
+                columns = {col["name"] for col in inspector.get_columns("user")}
+                with db.engine.connect() as conn:
+                    if "email_digest_enabled" not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN email_digest_enabled BOOLEAN NOT NULL DEFAULT 1"))
+                        conn.commit()
+                        app.logger.info("Auto-migrated schema: added user.email_digest_enabled")
+                    if "email_alerts_enabled" not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN email_alerts_enabled BOOLEAN NOT NULL DEFAULT 1"))
+                        conn.commit()
+                        app.logger.info("Auto-migrated schema: added user.email_alerts_enabled")
+                    if "calendar_token" not in columns:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN calendar_token VARCHAR(64)"))
+                        conn.commit()
+                        app.logger.info("Auto-migrated schema: added user.calendar_token")
+
+                legacy_users = User.query.filter((User.calendar_token == None) | (User.calendar_token == "")).all()
+                if legacy_users:
+                    for u in legacy_users:
+                        u.calendar_token = secrets.token_urlsafe(32)
+                    db.session.commit()
+    except Exception as exc:
+        app.logger.warning("Database schema auto-sync notice: %s", exc)
+
 
 def _bootstrap_admin(app):
     admin_email = os.getenv("ADMIN_EMAIL", "admin@tasknova.com").lower().strip()
@@ -88,14 +125,14 @@ def create_app(config_override=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
+    app.register_blueprint(calendar_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(notifications_bp)
     register_commands(app)
 
     if app.config.get("AUTO_CREATE_DB", True):
-        with app.app_context():
-            db.create_all()
+        _ensure_database_schema(app)
         _bootstrap_admin(app)
 
     @app.before_request
@@ -103,7 +140,14 @@ def create_app(config_override=None):
         g.request_started_at = perf_counter()
 
     @app.after_request
-    def log_request(response):
+    def log_and_secure_request(response):
+        # Attach OWASP security response headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+
         if request.path.startswith("/api/"):
             app.logger.info(
                 json.dumps(
@@ -128,6 +172,13 @@ def create_app(config_override=None):
     def server_error(error):
         if request.path.startswith("/api/"):
             return jsonify({"message": "Internal server error."}), 500
+        return error
+
+    @app.errorhandler(Exception)
+    def handle_unhandled_exception(error):
+        app.logger.error("Unhandled exception on %s %s: %s", request.method, request.path, error, exc_info=True)
+        if request.path.startswith("/api/"):
+            return jsonify({"message": "An unexpected server error occurred."}), 500
         return error
 
     @app.get("/health")
