@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="https://task-nova-app.vercel.app"><img src="https://img.shields.io/badge/Live%20Demo-task--nova--app.vercel.app-6366f1?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"></a>
-  <a href="https://tasknova-api-odp5.onrender.com/health"><img src="https://img.shields.io/badge/API%20Status-Live%20on%20Render-10b981?style=for-the-badge&logo=render&logoColor=white" alt="Render API"></a>
-  <a href="https://github.com/vishal-rathod-02/TaskNova"><img src="https://img.shields.io/badge/Version-v1.0.0-blue?style=for-the-badge&logo=github" alt="Version 1.0"></a>
+  <a href="https://tasknova-07fj.onrender.com/health"><img src="https://img.shields.io/badge/API%20Status-Live%20on%20Render-10b981?style=for-the-badge&logo=render&logoColor=white" alt="Render API"></a>
+  <a href="https://github.com/vishal-rathod-02/TaskNova/releases/tag/v1.1.0"><img src="https://img.shields.io/badge/Version-v1.1.0-blue?style=for-the-badge&logo=github" alt="Version 1.1.0"></a>
 </p>
 
 <p align="center">
@@ -29,6 +29,15 @@
 
 * 🖥️ **Live Web Application**: [https://task-nova-app.vercel.app](https://task-nova-app.vercel.app)
 * 📦 **GitHub Repository**: [https://github.com/vishal-rathod-02/TaskNova](https://github.com/vishal-rathod-02/TaskNova)
+* 🏷️ **Latest Release**: [v1.1.0](https://github.com/vishal-rathod-02/TaskNova/releases/tag/v1.1.0)
+
+---
+
+## 🆕 What's New in v1.1.0
+
+* 🗄️ **Self-healing database startup**: the API now idempotently adds missing `user` columns (`email_digest_enabled`, `email_alerts_enabled`, `calendar_token`) on boot via `sync_database_schema()`, plus a Docker entrypoint and `Procfile` release phase. Repair manually anytime with `flask --app "app:create_app" db-sync`. This fixes the `UndefinedColumn: column user.email_digest_enabled does not exist` 500 on `/api/auth/login` and `/api/auth/register` against legacy Postgres databases.
+* ✨ **Single-loader UX**: tab/view switches now render only the shimmer `SkeletonLoader` — the redundant `AppLoader` spinner underneath it was removed across Dashboard, Courses, Tasks, Calendar, Inbox, and User Directory views.
+* 🔖 **Centralized version**: `frontend/src/version.js` (`APP_VERSION`) is the single source of truth, rendered in the sidebar footer, user menu, login, and register badges, and kept in sync with `package.json`.
 
 ---
 
@@ -100,14 +109,15 @@ TaskNova/
 │   ├── run.py                      # Local application entrypoint & CLI commands
 │   ├── celery_worker.py            # Celery worker process entrypoint
 │   ├── requirements.txt            # Python production dependencies (includes gunicorn)
-│   ├── Dockerfile                  # Production container definition for Flask
-│   ├── Procfile                    # Render / Railway process definitions
+│   ├── Dockerfile                  # Production container definition for Flask (runs docker-entrypoint.sh db-sync before gunicorn)
+│   ├── docker-entrypoint.sh        # Idempotent schema sync on container boot, then exec CMD
+│   ├── Procfile                    # Render / Railway process definitions (includes release-phase db-sync)
 │   ├── .env.example                # Backend environment configuration template
 │   ├── app/
-│   │   ├── __init__.py             # Flask app factory, CORS init, admin auto-bootstrapper
+│   │   ├── __init__.py             # Flask app factory, CORS init, schema self-heal (sync_database_schema), admin auto-bootstrapper
 │   │   ├── config.py               # Dynamic settings & database URL normalizer
 │   │   ├── celery_app.py           # Celery beat schedules & task configuration
-│   │   ├── commands.py             # CLI commands (flask seed, flask run-jobs)
+│   │   ├── commands.py             # CLI commands (flask db-sync, flask seed, flask run-jobs)
 │   │   ├── auth/                   # JWT registration, login, and token refresh
 │   │   ├── projects/               # Course & syllabus management endpoints
 │   │   ├── tasks/                  # Task ledger, Kanban, and subtask routes
@@ -126,6 +136,7 @@ TaskNova/
     │   ├── TaskNova.svg            # Official brand presentation graphic
     │   └── _redirects              # SPA rewrite rule for Netlify / Render Static
     └── src/
+        ├── version.js              # Single source of truth for the UI version badge (APP_VERSION)
         ├── App.vue                 # Master shell (Desktop sidebar, mobile nav, user menu)
         ├── main.js                 # App initialization & Pinia store setup
         ├── style.css               # Design system, themes & print stylesheet
@@ -151,6 +162,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
+flask --app "app:create_app" db-sync   # idempotent: heals legacy DBs missing newer user columns
 python run.py
 ```
 * API Server: `http://127.0.0.1:5001`
@@ -182,6 +194,8 @@ docker compose up -d --build
 # Open in browser
 http://localhost
 ```
+
+> **Legacy database repair**: if `login`/`register` ever return `column user.email_digest_enabled does not exist`, run `flask --app "app:create_app" db-sync` (or redeploy — the Docker entrypoint and `Procfile` release phase run it automatically). Or apply the equivalent `ALTER TABLE "user" ADD COLUMN IF NOT EXISTS ...` SQL directly.
 
 ---
 
