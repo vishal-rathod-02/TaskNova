@@ -5,6 +5,19 @@ from .models import User
 
 
 def register_commands(app):
+    @app.cli.command("db-sync")
+    def db_sync_command():
+        """Idempotently add missing columns (e.g. user.email_digest_enabled) to legacy databases."""
+        # Lazy import avoids a circular import (app/__init__ imports this module).
+        from . import sync_database_schema
+
+        ok = sync_database_schema(app)
+        if ok:
+            print("Database schema sync completed successfully.")
+        else:
+            print("Database schema sync finished with warnings; check logs for details.")
+            raise SystemExit(1)
+
     @app.cli.command("seed")
     @click.option("--name", default=None, help="Admin Full Name")
     @click.option("--email", default=None, help="Admin Email Address")

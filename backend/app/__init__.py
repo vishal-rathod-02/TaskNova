@@ -25,52 +25,156 @@ import secrets
 from sqlalchemy import inspect, text
 
 
-def _ensure_database_schema(app):
-    """Safely apply schema additions for existing SQLite/PostgreSQL tables without breaking existing data."""
+def _user_columns(conn):
+    """Return the set of physical column names on the "user" table, or None if table is missing."""
     try:
-        with app.app_context():
+        inspector = inspect(conn)
+        if "user" not in set(inspector.get_table_names()):
+            return None
+        return {c["name"] for c in inspector.get_columns("user")}
+    except Exception:
+        return None
+
+
+def _add_column_if_missing_postgres(table, column_ddl, app=None):
+    """Run a single ADD COLUMN IF NOT EXISTS in its own committed transaction.
+
+    Each DDL runs isolated so one failure (e.g. concurrent worker racing the
+    same ALTER) never aborts the remaining columns. IF NOT EXISTS keeps this
+    idempotent under gunicorn's multi-worker startup.
+    """
+    logger = app.logger if app else None
+    try:
+        # Use a fresh connection per statement: db.engine.begin() commits DDL atomically on Postgres.
+        with db.engine.begin() as conn:
+            conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS {column_ddl}'))
+        if logger:
+            logger.info("Schema sync: ensured %s", column_ddl.split()[0])
+        return True
+    except Exception as exc:
+        if logger:
+            logger.warning("Schema sync notice for %s: %s", column_ddl.split()[0], exc)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def sync_database_schema(app=None):
+    """Idempotent schema sync. Safe to call from create_app(), flask db-sync, or entrypoint.
+
+    Returns True when the "user" table has all required columns afterwards.
+    """
+    logger = app.logger if app is not None else None
+    try:
+        ctx_app = app
+        if ctx_app is None:
+            # Called without app (should not happen); nothing to do.
+            return False
+        with ctx_app.app_context():
+            # 1. Create fresh tables for brand-new databases.
             db.create_all()
+
+            # 2. Patch legacy tables created before newer User columns existed.
+            #    Production Postgres keeps old data, so create_all() alone never
+            #    adds columns -> every User SELECT then fails with
+            #    UndefinedColumn: column user.email_digest_enabled does not exist.
             dialect = db.engine.dialect.name.lower()
+            required = {"email_digest_enabled", "email_alerts_enabled", "calendar_token"}
 
             if dialect == "postgresql":
-                # PostgreSQL natively supports ADD COLUMN IF NOT EXISTS and requires double quotes for "user"
-                with db.engine.begin() as conn:
-                    conn.execute(
-                        text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email_digest_enabled BOOLEAN NOT NULL DEFAULT TRUE;')
-                    )
-                    conn.execute(
-                        text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS email_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE;')
-                    )
-                    conn.execute(
-                        text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS calendar_token VARCHAR(64);')
-                    )
-                app.logger.info("PostgreSQL schema sync executed successfully.")
+                # NOTE: "user" is a reserved word in Postgres -> must stay double-quoted.
+                _add_column_if_missing_postgres(
+                    "user",
+                    "email_digest_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+                    ctx_app,
+                )
+                _add_column_if_missing_postgres(
+                    "user",
+                    "email_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE",
+                    ctx_app,
+                )
+                _add_column_if_missing_postgres("user", "calendar_token VARCHAR(64)", ctx_app)
+                # Index backing the unique calendar_token feed lookup (idempotent).
+                try:
+                    with db.engine.begin() as conn:
+                        conn.execute(
+                            text(
+                                'CREATE UNIQUE INDEX IF NOT EXISTS ix_user_calendar_token '
+                                'ON "user" (calendar_token)'
+                            )
+                        )
+                except Exception as idx_err:
+                    if logger:
+                        logger.warning("Calendar token index notice: %s", idx_err)
+                if logger:
+                    logger.info("PostgreSQL schema sync executed successfully.")
             else:
                 with db.engine.begin() as conn:
-                    inspector = inspect(conn)
-                    table_names = set(inspector.get_table_names())
-                    if "user" in table_names:
-                        cols = {c["name"] for c in inspector.get_columns("user")}
+                    cols = _user_columns(conn)
+                    if cols is not None:
                         if "email_digest_enabled" not in cols:
-                            conn.execute(text('ALTER TABLE "user" ADD COLUMN email_digest_enabled BOOLEAN NOT NULL DEFAULT 1'))
+                            conn.execute(
+                                text(
+                                    'ALTER TABLE "user" ADD COLUMN email_digest_enabled '
+                                    "BOOLEAN NOT NULL DEFAULT 1"
+                                )
+                            )
                         if "email_alerts_enabled" not in cols:
-                            conn.execute(text('ALTER TABLE "user" ADD COLUMN email_alerts_enabled BOOLEAN NOT NULL DEFAULT 1'))
+                            conn.execute(
+                                text(
+                                    'ALTER TABLE "user" ADD COLUMN email_alerts_enabled '
+                                    "BOOLEAN NOT NULL DEFAULT 1"
+                                )
+                            )
                         if "calendar_token" not in cols:
                             conn.execute(text('ALTER TABLE "user" ADD COLUMN calendar_token VARCHAR(64)'))
 
-            # Backfill any legacy users without calendar tokens
+            # 3. Verify before touching ORM rows (avoids repeating the original crash).
             try:
-                legacy_users = User.query.filter((User.calendar_token == None) | (User.calendar_token == "")).all()
+                with db.engine.connect() as conn:
+                    cols = _user_columns(conn)
+                if cols is not None and not required.issubset(cols):
+                    if logger:
+                        logger.error(
+                            "Schema sync incomplete, user columns present: %s", sorted(cols)
+                        )
+                    return False
+            except Exception as verify_err:
+                if logger:
+                    logger.warning("Schema verify notice: %s", verify_err)
+
+            # 4. Backfill any legacy users without calendar tokens.
+            try:
+                legacy_users = User.query.filter(
+                    (User.calendar_token == None) | (User.calendar_token == "")  # noqa: E711
+                ).all()
                 if legacy_users:
                     for u in legacy_users:
                         u.calendar_token = secrets.token_urlsafe(32)
                     db.session.commit()
             except Exception as backfill_err:
                 db.session.rollback()
-                app.logger.warning("Calendar token backfill notice: %s", backfill_err)
+                if logger:
+                    logger.warning("Calendar token backfill notice: %s", backfill_err)
 
+            return True
     except Exception as exc:
-        app.logger.error("Database schema auto-sync failed: %s", exc, exc_info=True)
+        if logger:
+            logger.error("Database schema auto-sync failed: %s", exc, exc_info=True)
+        else:
+            print(f"Database schema auto-sync failed: {exc}")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return False
+
+
+def _ensure_database_schema(app):
+    """Backward-compatible wrapper called during create_app()."""
+    sync_database_schema(app)
 
 
 def _bootstrap_admin(app):
