@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from "vue";
 import AnimatedBarChart from "../components/AnimatedBarChart.vue";
 import AnimatedNumber from "../components/AnimatedNumber.vue";
 import AppIcon from "../components/AppIcon.vue";
-import AppLoader from "../components/AppLoader.vue";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
 import SkeletonLoader from "../components/SkeletonLoader.vue";
@@ -163,10 +162,9 @@ onMounted(loadDashboard);
       <AppIcon name="alert" :size="16" /> {{ error }}
     </p>
 
-    <!-- Loading State with UIverse Skeleton & Orbital AppLoader -->
+    <!-- Loading State with Skeleton only (no spinner to avoid double-loader flash) -->
     <div v-if="analyticsStore.loading && !analyticsStore.stats" class="mt-8 space-y-6">
       <SkeletonLoader type="metrics" :count="4" />
-      <AppLoader size="md" text="Synchronizing academic workplace metrics" />
     </div>
 
     <!-- Admin Overview Cards with Animated Numbers -->

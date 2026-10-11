@@ -8,6 +8,7 @@ import FocusTimerModal from "./components/FocusTimerModal.vue";
 import ToastNotifications from "./components/ToastNotifications.vue";
 import UserMenu from "./components/UserMenu.vue";
 import { useTheme } from "./composables/useTheme";
+import { APP_VERSION } from "./version";
 import { useAuthStore } from "./stores/auth";
 import { useNotificationStore } from "./stores/notifications";
 import { useTimerStore } from "./stores/timer";
@@ -133,7 +134,7 @@ watch(
         />
         <div class="flex items-center justify-between px-2 text-[10px] font-mono text-slate-400 dark:text-slate-500">
           <span>TaskNova Workspace</span>
-          <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold">v1.0</span>
+          <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold">v{{ APP_VERSION }}</span>
         </div>
       </div>
     </aside>

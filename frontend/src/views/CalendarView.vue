@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import AppIcon from "../components/AppIcon.vue";
-import AppLoader from "../components/AppLoader.vue";
 import PageHeader from "../components/PageHeader.vue";
 import SkeletonLoader from "../components/SkeletonLoader.vue";
 import TaskCalendar from "../components/TaskCalendar.vue";
@@ -287,7 +286,6 @@ onMounted(loadCalendarData);
     <section class="mt-8">
       <div v-if="taskStore.loading" class="space-y-6">
         <SkeletonLoader type="board" :count="4" />
-        <AppLoader size="md" text="Rendering academic calendar schedule" />
       </div>
 
       <TaskCalendar

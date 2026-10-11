@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import AppIcon from "../components/AppIcon.vue";
-import AppLoader from "../components/AppLoader.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import DailyDigestModal from "../components/DailyDigestModal.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -326,10 +325,9 @@ onMounted(async () => {
       <AppIcon name="alert" :size="16" /> {{ error }}
     </p>
 
-    <!-- Loading State with UIverse Skeleton & AppLoader -->
+    <!-- Loading State with Skeleton only (no spinner to avoid double-loader flash) -->
     <div v-if="notificationStore.loading" class="mt-6 space-y-4">
       <SkeletonLoader type="rows" :count="4" />
-      <AppLoader size="sm" text="Fetching notification inbox updates" />
     </div>
 
     <!-- Empty State -->

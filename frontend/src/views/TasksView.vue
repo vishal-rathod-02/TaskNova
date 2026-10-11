@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
 import AppIcon from "../components/AppIcon.vue";
-import AppLoader from "../components/AppLoader.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
@@ -455,10 +454,9 @@ const formatActivityDate = (date) =>
 
     <!-- Task Content Area -->
     <section class="mt-8">
-      <!-- Loading State with UIverse Shimmer Skeleton & AppLoader -->
+      <!-- Loading State with Shimmer Skeleton only (no spinner to avoid double-loader flash) -->
       <div v-if="taskStore.loading" class="space-y-6">
         <SkeletonLoader :type="viewMode === 'kanban' ? 'board' : (viewMode === 'grid' ? 'cards' : 'rows')" :count="4" />
-        <AppLoader size="md" text="Loading academic task ledger" />
       </div>
 
       <!-- Empty State -->

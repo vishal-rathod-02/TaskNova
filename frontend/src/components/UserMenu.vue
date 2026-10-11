@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { useNotificationStore } from "../stores/notifications";
 import { useTimerStore } from "../stores/timer";
+import { APP_VERSION } from "../version";
 import AppIcon from "./AppIcon.vue";
 
 const props = defineProps({
@@ -143,7 +144,7 @@ const signOut = () => {
                   {{ authStore.user?.full_name }}
                 </p>
                 <span class="rounded bg-brand-100/80 dark:bg-brand-950/80 px-1.5 py-0.5 font-mono text-[9px] font-bold text-brand-700 dark:text-brand-300">
-                  v1.0
+                  v{{ APP_VERSION }}
                 </span>
               </div>
               <p class="font-mono text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
@@ -251,7 +252,7 @@ const signOut = () => {
         <!-- Release Version Tag -->
         <div class="mt-1 flex items-center justify-between px-2 pt-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
           <span>TaskNova Academic</span>
-          <span class="font-semibold text-slate-500 dark:text-slate-400">v1.0.0</span>
+          <span class="font-semibold text-slate-500 dark:text-slate-400">v{{ APP_VERSION }}</span>
         </div>
       </div>
     </transition>

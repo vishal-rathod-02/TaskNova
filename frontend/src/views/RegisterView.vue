@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import AppIcon from "../components/AppIcon.vue";
 import BrandLogo from "../components/BrandLogo.vue";
 import FormField from "../components/FormField.vue";
+import { APP_VERSION } from "../version";
 import { showToast } from "../composables/toast";
 import { useAuthStore } from "../stores/auth";
 
@@ -124,7 +125,7 @@ const submit = async () => {
             <div class="mt-3 flex items-center justify-center gap-2 text-[11px] font-mono text-slate-400 dark:text-slate-500">
               <span>TaskNova Academic</span>
               <span>•</span>
-              <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold text-slate-600 dark:text-slate-400">v1.0</span>
+              <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold text-slate-600 dark:text-slate-400">v{{ APP_VERSION }}</span>
             </div>
           </div>
         </div>

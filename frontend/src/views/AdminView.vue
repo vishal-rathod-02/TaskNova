@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import AppIcon from "../components/AppIcon.vue";
-import AppLoader from "../components/AppLoader.vue";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import EmptyState from "../components/EmptyState.vue";
 import PageHeader from "../components/PageHeader.vue";
@@ -196,10 +195,9 @@ onMounted(() => {
       <AppIcon name="alert" :size="16" /> {{ error }}
     </p>
 
-    <!-- Loading State with UIverse Skeleton & AppLoader -->
+    <!-- Loading State with Skeleton only (no spinner to avoid double-loader flash) -->
     <div v-if="loading && !users.length" class="mt-8 space-y-4">
       <SkeletonLoader type="rows" :count="5" />
-      <AppLoader size="sm" text="Synchronizing student & user directory" />
     </div>
 
     <!-- Empty State -->
