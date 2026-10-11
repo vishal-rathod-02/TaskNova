@@ -35,9 +35,14 @@
 
 ## 🆕 What's New in v1.1.0
 
-* 🗄️ **Self-healing database startup**: the API now idempotently adds missing `user` columns (`email_digest_enabled`, `email_alerts_enabled`, `calendar_token`) on boot via `sync_database_schema()`, plus a Docker entrypoint and `Procfile` release phase. Repair manually anytime with `flask --app "app:create_app" db-sync`. This fixes the `UndefinedColumn: column user.email_digest_enabled does not exist` 500 on `/api/auth/login` and `/api/auth/register` against legacy Postgres databases.
-* ✨ **Single-loader UX**: tab/view switches now render only the shimmer `SkeletonLoader` — the redundant `AppLoader` spinner underneath it was removed across Dashboard, Courses, Tasks, Calendar, Inbox, and User Directory views.
-* 🔖 **Centralized version**: `frontend/src/version.js` (`APP_VERSION`) is the single source of truth, rendered in the sidebar footer, user menu, login, and register badges, and kept in sync with `package.json`.
+* 📅 **Live RFC 5545 iCalendar Subscription**: Sync all course deadlines and assignments in real-time with Google Calendar, Apple Calendar, and Outlook via 1-click `webcal://` or private HTTPS `.ics` feeds (`/api/calendar/feed/<token>.ics`), complete with secure 32-byte cryptographic token rotation and instant revocation.
+* 🖨️ **Isolated Daily Digest Print & PDF Engine**: Completely overhauled daily productivity print/PDF generation into an isolated iframe sandbox (`@page { margin: 12mm 14mm; }`), resolving 3-sheet page duplication bugs and rendering a single-page printable report with letter grades, completion velocity bars, and course breakdown tables.
+* 📧 **Delta-Aware Email Notifications & Celery Pipeline**: Background daily productivity summaries now evaluate workload progress against previous reports, skipping redundant email delivery when no task activity changed. Backed by Celery worker & Celery Beat scheduling with user-configurable email preference toggles.
+* 🛡️ **OWASP Security Hardening & CSV Injection Defense**: Sanitized CSV exports (`exportTasksToCSV`) against spreadsheet formula injection (DDE execution for `=`, `+`, `-`, `@`), added sliding-window auth rate limiting, JWT token revocation blocklisting, and hardened OWASP HTTP response headers.
+* 📱 **Mobile-Responsive Export Dropdown**: Redesigned the "Export Ledger" dropdown in Tasks and Calendar views with smart viewport containment (`max-w-[calc(100vw-2rem)]`), eliminating layout clutter and screen clipping on small-screen devices.
+* 🗄️ **Self-Healing Database Startup**: The API idempotently adds missing `user` columns (`email_digest_enabled`, `email_alerts_enabled`, `calendar_token`) on boot using native PostgreSQL `ADD COLUMN IF NOT EXISTS` inside atomic transaction blocks, plus Docker entrypoint and `Procfile` release phases, resolving `UndefinedColumn` errors on legacy databases.
+* ✨ **Single-Loader UX**: Tab/view switches now render cleanly with shimmer `SkeletonLoader` transitions — removing redundant spinners across Dashboard, Courses, Tasks, Calendar, Inbox, and User Directory.
+* 🔖 **Centralized Versioning**: Single source of truth in `frontend/src/version.js` (`APP_VERSION`) synchronized with `package.json`, displayed across sidebar footer, user profile menu, and authentication screens.
 
 ---
 
