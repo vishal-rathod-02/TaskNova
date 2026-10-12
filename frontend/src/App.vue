@@ -100,9 +100,14 @@ watch(
           <span>Task Ledger & Kanban</span>
         </router-link>
 
+        <router-link to="/timetable" class="nav-item">
+          <AppIcon name="timetable" :size="18" />
+          <span>Timetable & Routine</span>
+        </router-link>
+
         <router-link to="/calendar" class="nav-item">
           <AppIcon name="calendar" :size="18" />
-          <span>Academic Calendar</span>
+          <span>Calendar</span>
         </router-link>
 
         <router-link to="/notifications" class="nav-item justify-between gap-2">

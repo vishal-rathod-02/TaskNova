@@ -96,7 +96,259 @@ export const exportTasksToICS = (tasks = [], calendarName = "TaskNova Academic D
   URL.revokeObjectURL(url);
 };
 
-export const printAcademicLedger = (tasks = [], scopeName = "All Courses") => {
+/* ------------------------------------------------------------------ */
+/* Universal Timetable exports (Phase 3: every persona, not students only) */
+/* ------------------------------------------------------------------ */
+
+const TIMETABLE_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const TIMETABLE_BYDAY = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+const TIMETABLE_TYPE_COLORS = {
+  meeting: "#8b5cf6",
+  focus_work: "#4f46e5",
+  operations: "#d97706",
+  habit: "#059669",
+  personal: "#0891b2",
+};
+
+const escapeIcalText = (text) => {
+  if (!text) return "";
+  return String(text)
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n/g, "\\n")
+    .replace(/\n/g, "\\n");
+};
+
+const downloadBlob = (content, mime, filename) => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+// Backend convention: 0=Mon..6=Sun. Next calendar date carrying that weekday.
+const nextDateForWeekday = (dow) => {
+  const today = new Date();
+  const delta = (((dow - ((today.getDay() + 6) % 7)) % 7) + 7) % 7;
+  const target = new Date(today.getFullYear(), today.getMonth(), today.getDate() + delta);
+  return target;
+};
+
+const timetableEventDate = (slot) => {
+  if (slot.specific_date) {
+    const [y, m, d] = String(slot.specific_date).split("-").map(Number);
+    if (!y || !m || !d) return null;
+    return new Date(y, m - 1, d);
+  }
+  if (slot.day_of_week === null || slot.day_of_week === undefined) return null;
+  return nextDateForWeekday(Number(slot.day_of_week));
+};
+
+const timetableDayLabel = (slot) => {
+  if (slot.specific_date) return slot.specific_date;
+  const dow = Number(slot.day_of_week);
+  return Number.isInteger(dow) && dow >= 0 && dow <= 6 ? `${TIMETABLE_WEEKDAYS[dow]} (weekly)` : "Unscheduled";
+};
+
+export const exportTimetableToICS = (slots = [], calendarName = "TaskNova Weekly Routine") => {
+  if (!slots.length) return;
+
+  const toIcsLocal = (day, hhmm) => {
+    const [h, m] = String(hhmm || "00:00").split(":").map(Number);
+    const dt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), h || 0, m || 0);
+    const pad = (v) => String(v).padStart(2, "0");
+    return `${dt.getFullYear()}${pad(dt.getMonth() + 1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+  };
+
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const events = [];
+  for (const slot of slots) {
+    const day = timetableEventDate(slot);
+    if (!day) continue;
+    const typeLabel = String(slot.slot_type || "focus_work").replace(/_/g, " ");
+    const lines = [
+      "BEGIN:VEVENT",
+      `UID:timetable-slot-${slot.id}@tasknova`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${toIcsLocal(day, slot.start_time)}`,
+      `DTEND:${toIcsLocal(day, slot.end_time)}`,
+      `SUMMARY:${escapeIcalText(`[${typeLabel}] ${slot.title}`)}`,
+      `DESCRIPTION:${escapeIcalText(
+        [`Type: ${typeLabel}`, slot.project_name ? `Project: ${slot.project_name}` : null, slot.location ? `Location: ${slot.location}` : null]
+          .filter(Boolean)
+          .join("\n")
+      )}`,
+      "STATUS:CONFIRMED",
+    ];
+    if (!slot.specific_date && Number.isInteger(Number(slot.day_of_week))) {
+      lines.push(`RRULE:FREQ=WEEKLY;BYDAY=${TIMETABLE_BYDAY[Number(slot.day_of_week)]}`);
+    }
+    lines.push("END:VEVENT");
+    events.push(lines.join("\r\n"));
+  }
+
+  if (!events.length) {
+    alert("No schedulable timetable blocks were found to export.");
+    return;
+  }
+
+  const icsContent = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//TaskNova//Universal Timetable//EN",
+    `X-WR-CALNAME:${calendarName}`,
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    ...events,
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  downloadBlob(icsContent, "text/calendar;charset=utf-8;", `${calendarName.toLowerCase().replace(/\s+/g, "-")}.ics`);
+};
+
+export const exportTimetableToCSV = (slots = [], filename = "tasknova-timetable.csv") => {
+  if (!slots.length) return;
+
+  const headers = ["ID", "Title", "Type", "Day / Date", "Start", "End", "Duration (min)", "Location", "Project"];
+
+  const escapeCsv = (str) => {
+    if (str === null || str === undefined) return '""';
+    let text = String(str);
+    if (/^[=+\-@\t\r]/.test(text)) {
+      text = `'${text}`;
+    }
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const rows = slots.map((s) => [
+    escapeCsv(s.id),
+    escapeCsv(s.title),
+    escapeCsv(s.slot_type),
+    escapeCsv(timetableDayLabel(s)),
+    escapeCsv(s.start_time),
+    escapeCsv(s.end_time),
+    escapeCsv(s.duration_minutes ?? ""),
+    escapeCsv(s.location || ""),
+    escapeCsv(s.project_name || ""),
+  ]);
+
+  downloadBlob([headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n"), "text/csv;charset=utf-8;", filename);
+};
+
+export const printTimetableAgenda = (slots = [], mode = "week", title = "Weekly Routine") => {
+  if (!slots || !slots.length) return;
+
+  const escapeHtml = (text) => {
+    if (!text && text !== 0) return "";
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+
+  const typeLabel = (t) => escapeHtml(String(t || "focus_work").replace(/_/g, " ").toUpperCase());
+  const dot = (t) => TIMETABLE_TYPE_COLORS[t] || "#4f46e5";
+  const byStart = (a, b) => String(a.start_time).localeCompare(String(b.start_time));
+
+  const blockHtml = (s) => `
+    <div class="block">
+      <span class="dot" style="background: ${dot(s.slot_type)};"></span>
+      <div class="block-body">
+        <div class="block-title">${escapeHtml(s.title)}</div>
+        <div class="block-meta">${escapeHtml(s.start_time)} â€“ ${escapeHtml(s.end_time)} &bull; ${escapeHtml(typeLabel(s.slot_type))}${s.project_name ? ` &bull; ${escapeHtml(s.project_name)}` : ""}${s.location ? ` &bull; ${escapeHtml(s.location)}` : ""}</div>
+      </div>
+      <div class="block-check">[ ]</div>
+    </div>`;
+
+  let sectionsHtml = "";
+  if (mode === "day") {
+    sectionsHtml = `<div class="day"><div class="day-title">${escapeHtml(title)}</div>${[...slots].sort(byStart).map(blockHtml).join("")}</div>`;
+  } else {
+    sectionsHtml = TIMETABLE_WEEKDAYS.map((dayName, dow) => {
+      const daySlots = slots
+        .filter((s) => {
+          if (s.specific_date) {
+            const [y, m, d] = String(s.specific_date).split("-").map(Number);
+            return new Date(y, (m || 1) - 1, d || 1).getDay() === (dow + 1) % 7;
+          }
+          return Number(s.day_of_week) === dow;
+        })
+        .sort(byStart);
+      if (!daySlots.length) return "";
+      return `<div class="day"><div class="day-title">${dayName}</div>${daySlots.map(blockHtml).join("")}</div>`;
+    }).join("");
+  }
+
+  const totalMins = slots.reduce((sum, s) => sum + (Number(s.duration_minutes) || 0), 0);
+  const hours = Math.floor(totalMins / 60);
+  const mins = totalMins % 60;
+  const nowStr = new Date().toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" });
+
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>TaskNova Timetable - ${escapeHtml(title)}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm 14mm; }
+          * { box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; background: #fff; margin: 0; }
+          .header { border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+          .brand-title { font-size: 15pt; font-weight: 800; color: #1e1b4b; }
+          .brand-sub { font-size: 9pt; font-weight: 600; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+          .meta { text-align: right; font-size: 8pt; color: #64748b; }
+          .summary { display: flex; gap: 12px; margin-bottom: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 8.5pt; font-weight: 600; color: #334155; }
+          .day { margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid; }
+          .day-title { font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #4338ca; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 6px; }
+          .block { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px dotted #e2e8f0; }
+          .dot { width: 10px; height: 10px; border-radius: 9999px; margin-top: 4px; flex: none; }
+          .block-body { flex: 1; }
+          .block-title { font-weight: 700; font-size: 9.5pt; }
+          .block-meta { font-size: 8pt; color: #64748b; margin-top: 1px; }
+          .block-check { width: 14px; height: 14px; border: 1.5px solid #64748b; border-radius: 3px; font-size: 9px; text-align: center; color: #047857; flex: none; }
+          .footer { margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 7.5pt; color: #94a3b8; display: flex; justify-content: space-between; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="brand-title">TaskNova Â· ${mode === "day" ? "Daily Agenda" : "Weekly Routine"}</div>
+            <div class="brand-sub">${escapeHtml(title)}</div>
+          </div>
+          <div class="meta"><div><strong>Generated:</strong> ${nowStr}</div><div><strong>Blocks:</strong> ${slots.length}</div></div>
+        </div>
+        <div class="summary"><span>Blocks: <strong>${slots.length}</strong></span><span>Scheduled: <strong>${hours}h ${mins}m</strong></span></div>
+        ${sectionsHtml}
+        <div class="footer"><span>TaskNova Universal Timetable</span><span>Official Printable Schedule</span></div>
+      </body>
+    </html>
+  `);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+    setTimeout(() => {
+      document.body.removeChild(iframe);
+    }, 2000);
+  }, 250);
+};
+
+export const printAcademicLedger = (tasks = [], scopeName = "All Projects") => {
   if (!tasks || !tasks.length) return;
 
   const iframe = document.createElement("iframe");

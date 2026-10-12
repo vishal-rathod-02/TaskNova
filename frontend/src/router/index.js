@@ -6,6 +6,7 @@ import RegisterView from "../views/RegisterView.vue";
 import DashboardView from "../views/DashboardView.vue";
 import ProjectsView from "../views/ProjectsView.vue";
 import TasksView from "../views/TasksView.vue";
+import TimetableView from "../views/TimetableView.vue";
 import AdminView from "../views/AdminView.vue";
 import CalendarView from "../views/CalendarView.vue";
 import NotificationsView from "../views/NotificationsView.vue";
@@ -30,6 +31,12 @@ const routes = [
     path: "/tasks",
     name: "tasks",
     component: TasksView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/timetable",
+    name: "timetable",
+    component: TimetableView,
     meta: { requiresAuth: true },
   },
   {
@@ -76,7 +83,10 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return next({ name: "login" });
   }
-  if ((to.name === "login" || to.name === "register") && authStore.isAuthenticated) {
+  if (
+    (to.name === "login" || to.name === "register") &&
+    authStore.isAuthenticated
+  ) {
     return next({ name: "dashboard" });
   }
   if (to.meta.requiresAdmin && !authStore.isAdmin) {
