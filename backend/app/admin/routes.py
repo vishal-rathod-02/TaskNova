@@ -1,7 +1,10 @@
 from flask import Blueprint, jsonify, request
 
+from sqlalchemy import func, or_
+
 from ..extensions import db
-from ..models import ActivityLog, DailyReport, Notification, Project, Task, User
+from ..models import ActivityLog, DailyReport, Notification, Project, Task, TimetableAllocation, TimetableSlot, User
+from ..timetable.service import TEMPLATE_META, TEMPLATE_SLOTS, TEMPLATES, template_states
 from ..utils.auth import require_current_user, role_required
 from ..utils.cache import invalidate_dashboard_cache
 
@@ -49,6 +52,19 @@ def delete_user(user_id):
             ActivityLog.query.filter(ActivityLog.task_id.in_(task_ids)).delete(synchronize_session=False)
             Task.query.filter(Task.id.in_(task_ids)).delete(synchronize_session=False)
         Project.query.filter(Project.id.in_(project_ids)).delete(synchronize_session=False)
+    # Timetable data is user-owned: drop allocations touching the user's slots or
+    # tasks first (bulk deletes bypass ORM cascades), then the slots themselves.
+    slot_ids = [slot.id for slot in TimetableSlot.query.filter_by(user_id=user.id).all()]
+    remaining_task_ids = [task.id for task in Task.query.filter_by(created_by=user.id).all()]
+    allocation_filter = []
+    if slot_ids:
+        allocation_filter.append(TimetableAllocation.slot_id.in_(slot_ids))
+    if remaining_task_ids:
+        allocation_filter.append(TimetableAllocation.task_id.in_(remaining_task_ids))
+    if allocation_filter:
+        TimetableAllocation.query.filter(or_(*allocation_filter)).delete(synchronize_session=False)
+    if slot_ids:
+        TimetableSlot.query.filter(TimetableSlot.id.in_(slot_ids)).delete(synchronize_session=False)
     # A user may have activity on tasks that were later reassigned in a future extension.
     ActivityLog.query.filter_by(user_id=user.id).delete(synchronize_session=False)
     Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
@@ -57,3 +73,47 @@ def delete_user(user_id):
     db.session.commit()
     invalidate_dashboard_cache()
     return "", 204
+
+
+@admin_bp.get("/timetable/templates")
+@role_required("admin")
+def list_routine_templates():
+    """Governor switchboard: persona templates with live adoption (aggregate counts only)."""
+    states = template_states()
+    templates = []
+    for name in TEMPLATES:
+        meta = TEMPLATE_META[name]
+        active_blocks = TimetableSlot.query.filter_by(source_template=name).count()
+        adopters = (
+            db.session.query(func.count(func.distinct(TimetableSlot.user_id)))
+            .filter(TimetableSlot.source_template == name)
+            .scalar()
+            or 0
+        )
+        templates.append(
+            states[name].to_dict(
+                {
+                    "label": meta["label"],
+                    "description": meta["description"],
+                    "blocks_per_week": len(TEMPLATE_SLOTS[name]) * 5,
+                    "active_blocks": active_blocks,
+                    "adopters": adopters,
+                }
+            )
+        )
+    return jsonify({"templates": templates})
+
+
+@admin_bp.patch("/timetable/templates/<string:name>")
+@role_required("admin")
+def update_routine_template(name):
+    name = str(name).strip().lower()
+    if name not in TEMPLATES:
+        return jsonify({"message": "Routine template not found."}), 404
+    payload = request.get_json(silent=True) or {}
+    if not isinstance(payload.get("is_enabled"), bool):
+        return jsonify({"message": "Validation failed", "errors": {"is_enabled": "Provide a boolean value."}}), 422
+    states = template_states()
+    states[name].is_enabled = payload["is_enabled"]
+    db.session.commit()
+    return jsonify({"template": states[name].to_dict({"label": TEMPLATE_META[name]["label"]})})

@@ -5,7 +5,8 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
 from ..extensions import db
-from ..models import ActivityLog, DailyReport, Project, Task, User
+from ..models import ActivityLog, DailyReport, Project, Task, TimetableAllocation, TimetableSlot, User
+from ..models.timetable import RoutineTemplateState
 from ..models.time import utcnow
 from ..utils.auth import require_current_user, role_required
 from ..utils.cache import get_cached_json, set_cached_json
@@ -52,17 +53,67 @@ def _personal_stats(user):
 
 
 def _admin_stats():
+    """Platform-governor metrics (Trajectory 2): growth, activation, routine adoption.
+
+    All figures are aggregate counts — no per-user content is ever exposed.
+    """
+    from ..timetable.service import seed_template_states
+
+    seed_template_states()  # heal switchboard rows if boot seeding was skipped
     now = utcnow()
     total_tasks = Task.query.count()
     completed_tasks = Task.query.filter_by(status="done").count()
+
+    members = User.query.filter(User.role != "admin")
+    total_members = members.count()
+    member_ids = [u.id for u in members.with_entities(User.id).all()]
+
+    activated_members = (
+        db.session.query(func.count(func.distinct(Project.owner_id)))
+        .filter(Project.owner_id.in_(member_ids))
+        .scalar()
+        if member_ids
+        else 0
+    )
+    routine_adopters = (
+        db.session.query(func.count(func.distinct(TimetableSlot.user_id)))
+        .filter(TimetableSlot.user_id.in_(member_ids))
+        .scalar()
+        if member_ids
+        else 0
+    )
+
+    slot_type_rows = (
+        db.session.query(TimetableSlot.slot_type, func.count(TimetableSlot.id)).group_by(TimetableSlot.slot_type).all()
+    )
+
     return {
         "total_users": User.query.count(),
         "active_users": User.query.filter_by(is_blocked=False).count(),
         "blocked_users": User.query.filter_by(is_blocked=True).count(),
+        "total_members": total_members,
+        "active_members": members.filter_by(is_blocked=False).count(),
+        "blocked_members": members.filter_by(is_blocked=True).count(),
+        "total_admins": User.query.filter_by(role="admin").count(),
+        "signups_7d": User.query.filter(User.created_at >= now - timedelta(days=7)).count(),
+        "signups_30d": User.query.filter(User.created_at >= now - timedelta(days=30)).count(),
+        "weekly_active_users": db.session.query(func.count(func.distinct(ActivityLog.user_id)))
+        .filter(ActivityLog.created_at >= now - timedelta(days=7))
+        .scalar()
+        or 0,
+        "activated_members": activated_members or 0,
+        "activation_rate": round((activated_members / total_members) * 100, 1) if total_members else 0,
+        "routine_adopters": routine_adopters or 0,
+        "routine_adoption_rate": round((routine_adopters / total_members) * 100, 1) if total_members else 0,
         "total_projects": Project.query.count(),
         "total_tasks": total_tasks,
         "completed_tasks": completed_tasks,
         "overdue_tasks": Task.query.filter(Task.due_date.isnot(None), Task.due_date < now, Task.status != "done").count(),
+        "total_routine_slots": TimetableSlot.query.count(),
+        "total_allocations": TimetableAllocation.query.count(),
+        "templates_live": RoutineTemplateState.query.filter_by(is_enabled=True).count(),
+        "templates_disabled": RoutineTemplateState.query.filter_by(is_enabled=False).count(),
+        "slot_type_mix": [{"label": label, "count": count} for label, count in slot_type_rows],
         "activity_last_24h": ActivityLog.query.filter(ActivityLog.created_at >= now - timedelta(hours=24)).count(),
     }
 
