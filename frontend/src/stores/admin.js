@@ -1,11 +1,19 @@
 import { defineStore } from "pinia";
-import { deleteUser as deleteUserRequest, listUsers, updateUserBlock as updateUserBlockRequest } from "../services/admin";
+import {
+  deleteUser as deleteUserRequest,
+  listRoutineTemplates,
+  listUsers,
+  updateRoutineTemplate as updateRoutineTemplateRequest,
+  updateUserBlock as updateUserBlockRequest,
+} from "../services/admin";
 
 export const useAdminStore = defineStore("admin", {
   state: () => ({
     users: [],
     loading: false,
     error: "",
+    templates: [],
+    templatesLoading: false,
   }),
   actions: {
     async fetchUsers() {
@@ -29,6 +37,21 @@ export const useAdminStore = defineStore("admin", {
     async removeUser(id) {
       await deleteUserRequest(id);
       this.users = this.users.filter((item) => item.id !== id);
+    },
+    async fetchRoutineTemplates() {
+      this.templatesLoading = true;
+      try {
+        const { data } = await listRoutineTemplates();
+        this.templates = data.templates;
+      } finally {
+        this.templatesLoading = false;
+      }
+    },
+    async toggleRoutineTemplate(template) {
+      const { data } = await updateRoutineTemplateRequest(template.name, !template.is_enabled);
+      const updated = { ...template, ...data.template };
+      this.templates = this.templates.map((item) => (item.name === updated.name ? updated : item));
+      return updated;
     },
   },
 });

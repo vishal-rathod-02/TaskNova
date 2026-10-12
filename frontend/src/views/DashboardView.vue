@@ -33,15 +33,10 @@ const stats = computed(() => analyticsStore.stats || {});
 const isEmpty = computed(() => !analyticsStore.loading && !authStore.isAdmin && stats.value.total_tasks === 0);
 const report = computed(() => notificationStore.latestReport);
 const latestUsers = computed(() => [...(adminStore.users || [])].sort((a, b) => b.id - a.id).slice(0, 4));
-const adminCompletionRate = computed(() => {
-  const total = stats.value.total_tasks || 0;
-  if (!total) return 0;
-  return Math.round(((stats.value.completed_tasks || 0) / total) * 100);
-});
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
-  const name = authStore.user?.full_name?.split(" ")[0] || "Student";
+  const name = authStore.user?.full_name?.split(" ")[0] || "there";
   if (hour < 12) return `Good morning, ${name} 🎓`;
   if (hour < 18) return `Good afternoon, ${name} 🎓`;
   return `Good evening, ${name} 🎓`;
@@ -54,7 +49,8 @@ const loadDashboard = async () => {
         Promise.all([
           analyticsStore.fetchStats(authStore.isAdmin),
           authStore.isAdmin ? adminStore.fetchUsers().catch(() => {}) : Promise.resolve(),
-          authStore.isAdmin ? Promise.resolve() : notificationStore.fetchNotifications(),
+          // Admins get a real personal unread count too — never derive it from task stats.
+          notificationStore.fetchNotifications().catch(() => {}),
         authStore.isAdmin ? Promise.resolve() : notificationStore.fetchLatestReport().catch(() => {}),
         projectStore.fetchProjects().catch(() => {}),
         authStore.isAdmin ? Promise.resolve() : taskStore.fetchTasks().catch(() => {}),
@@ -77,7 +73,7 @@ const handleCreateTask = async (formData) => {
       due_date: toUtcIso(formData.due_date),
     });
     isCreateTaskOpen.value = false;
-    showToast("Task added to your academic ledger.");
+    showToast("Task added to your ledger.");
     await loadDashboard();
   } catch (err) {
     taskFormErrors.value = err.response?.data?.errors || {};
@@ -95,7 +91,7 @@ onMounted(loadDashboard);
     <!-- Header -->
     <PageHeader
       :title="authStore.isAdmin ? 'System Governance Overview' : greeting"
-      :description="authStore.isAdmin ? 'A high-level read on user accounts, system courses, and task health.' : 'Track your academic milestones, upcoming deadlines, and study momentum.'"
+      :description="authStore.isAdmin ? 'Platform health, member growth, and routine adoption across the hub.' : 'Track your milestones, upcoming deadlines, and daily momentum.'"
       :badge="authStore.isAdmin ? 'Admin Console' : 'Active Semester'"
     >
       <template #actions>
@@ -167,7 +163,7 @@ onMounted(loadDashboard);
       <SkeletonLoader type="metrics" :count="4" />
     </div>
 
-    <!-- Admin Overview Cards with Animated Numbers -->
+    <!-- Governor Overview Cards: platform work-stats only (member productivity lives in the directory) -->
     <section v-else-if="authStore.isAdmin" class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
       <div class="metric-card border-l-4 border-l-brand-500 transition-all duration-300 hover:-translate-y-1">
         <span class="data-label">Active Users</span>
@@ -178,19 +174,19 @@ onMounted(loadDashboard);
       </div>
 
       <div class="metric-card border-l-4 border-l-academic-purple transition-all duration-300 hover:-translate-y-1">
-        <span class="data-label">Courses & Projects</span>
+        <span class="data-label">New Signups · 7d</span>
         <p class="metric-value mt-2">
-          <AnimatedNumber :value="stats.total_projects || 0" />
+          <AnimatedNumber :value="stats.signups_7d || 0" />
         </p>
-        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Active workspaces</p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ stats.signups_30d || 0 }} in the last 30 days</p>
       </div>
 
-      <div class="metric-card border-l-4 border-l-rose-500 transition-all duration-300 hover:-translate-y-1">
-        <span class="data-label">System Overdue Tasks</span>
-        <p class="metric-value mt-2 text-rose-600 dark:text-rose-400">
-          <AnimatedNumber :value="stats.overdue_tasks || 0" />
+      <div class="metric-card border-l-4 border-l-cyan-500 transition-all duration-300 hover:-translate-y-1">
+        <span class="data-label">Routine Adoption</span>
+        <p class="metric-value mt-2">
+          <AnimatedNumber :value="stats.routine_adoption_rate || 0" suffix="%" />
         </p>
-        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Need immediate follow-up</p>
+        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">{{ stats.routine_adopters || 0 }} adopters · {{ stats.total_routine_slots || 0 }} blocks</p>
       </div>
 
       <div class="metric-card border-l-4 border-l-emerald-500 transition-all duration-300 hover:-translate-y-1">
@@ -219,19 +215,19 @@ onMounted(loadDashboard);
           </router-link>
           <router-link to="/notifications" class="btn-secondary min-h-11 justify-center gap-1.5 text-xs">
             <AppIcon name="bell" :size="15" class="flex-none" /> Inbox
-            <span v-if="stats.overdue_tasks > 0" class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-extrabold text-white">{{ stats.overdue_tasks }}</span>
+            <span v-if="notificationStore.unreadCount > 0" class="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-rose-500 px-1.5 font-mono text-[10px] font-extrabold text-white">{{ notificationStore.unreadCount > 99 ? "99+" : notificationStore.unreadCount }}</span>
           </router-link>
         </div>
         <div class="mt-4">
           <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-            <span>Workspace completion</span>
-            <span class="font-mono font-bold text-slate-700 dark:text-slate-200">{{ adminCompletionRate }}%</span>
+            <span>Member activation</span>
+            <span class="font-mono font-bold text-slate-700 dark:text-slate-200">{{ stats.activation_rate || 0 }}%</span>
           </div>
           <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-emerald-500 transition-all duration-700" :style="{ width: `${adminCompletionRate}%` }"></div>
+            <div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-cyan-500 transition-all duration-700" :style="{ width: `${stats.activation_rate || 0}%` }"></div>
           </div>
           <p class="mt-2 font-mono text-[11px] text-slate-500 dark:text-slate-400">
-            {{ stats.blocked_users || 0 }} blocked · {{ stats.total_projects || 0 }} projects · {{ stats.completed_tasks || 0 }}/{{ stats.total_tasks || 0 }} tasks done
+            {{ stats.blocked_users || 0 }} blocked · {{ stats.templates_live || 0 }} templates live · {{ stats.weekly_active_users || 0 }} weekly active
           </p>
         </div>
       </div>
@@ -261,12 +257,12 @@ onMounted(loadDashboard);
     <EmptyState
       v-else-if="isEmpty"
       class="mt-10"
-      title="Your Academic Workspace is Ready"
-      description="Create your first Course or Project to start organizing assignments, study schedules, and task milestones."
+      title="Your Personal Hub is Ready"
+      description="Create your first project to start organizing tasks, routines, and milestones."
     >
       <template #actions>
         <router-link class="btn-primary gap-2" to="/projects">
-          <AppIcon name="plus" :size="16" /> Create Your First Course
+          <AppIcon name="plus" :size="16" /> Create Your First Project
         </router-link>
       </template>
     </EmptyState>
