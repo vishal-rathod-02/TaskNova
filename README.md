@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <strong>Modern Full-Stack Academic Task & Workplace Productivity Suite</strong>
+  <strong>Modern Full-Stack Routine & Workplace Productivity Suite</strong>
 </p>
 
 <p align="center">
@@ -46,39 +46,50 @@
 
 ---
 
+## 🚀 Unreleased: Universal Timetable & Governor Console
+
+> On `main` after v1.1.0 — the all-in-one routine hub trajectory.
+
+* 📅 **Universal Timetable & Plan My Day** (`/timetable`): recurring weekly blocks and one-off dated entries across five types (`meeting`, `focus_work`, `operations`, `habit`, `personal`), with collision detection, persona quick-start templates (Corporate / Maker / Campus / Freelance), and a Maker-vs-Pomodoro auto-scheduler that fits backlog tasks into free windows (preview first, apply with one click). Slots flow into the live ICS feed and support `.ics` / `.csv` export plus printable agendas.
+* 🏛️ **Platform Governor Console** (`/admin`): aggregate-only metrics — signups, weekly-active users, activation and routine-adoption rates, template adoption — plus a starter-template switchboard (enable/disable with live counts) and a member/admin split directory. No per-user content is ever exposed to admins.
+* 🔑 **New endpoints**: `GET/POST /api/timetable`, `PUT/DELETE /api/timetable/:id`, `POST /api/timetable/auto-schedule`, `POST /api/timetable/apply-template`, `GET /api/timetable/templates`, `GET/PATCH /api/admin/timetable/templates`.
+* 🛡️ **Security posture**: `.dockerignore` files keep local `.env` files and dev state out of production images; backend dependencies are version-pinned (`requirements.txt`); routine writes are user-scoped with ownership checks and per-call creation caps.
+
+---
+
 ## 📖 Overview
 
-**TaskNova** is a modern, high-performance academic productivity workspace engineered with **Vue 3 (Composition API), Vite, TailwindCSS, Python Flask, PostgreSQL, Redis, and Celery**. 
+**TaskNova** is a modern, high-performance personal productivity hub engineered with **Vue 3 (Composition API), Vite, TailwindCSS, Python Flask, PostgreSQL, Redis, and Celery**.
 
-Built specifically for students, researchers, and educators, TaskNova bridges the gap between course syllabi, daily task management, sprint-based study habits, and automated deadline tracking in a unified daylight/night-shift interface.
+Built for anyone who wants to organize their day in one calm place, TaskNova bridges the gap between projects, routines, daily task management, sprint-based focus habits, and automated deadline tracking in a unified daylight/night-shift interface.
 
 ---
 
 ## ✨ Key Features & Architecture
 
-### 🎓 1. Academic Courses & Syllabi Management
-* Organize coursework by custom course codes, credit weights, instructor details, and customizable color themes.
-* Track real-time progress percentages, active assignment workloads, and historical completion velocities.
+### 🎓 1. Projects & Workspace Management
+* Organize work by custom projects, tags, and customizable color themes.
+* Track real-time progress percentages, active workloads, and historical completion velocities.
 
 ### 📋 2. Dual Task Ledger & Interactive Kanban
-* **Task Ledger**: Filterable table with priority badges, multi-course selectors, and inline quick-actions.
+* **Task Ledger**: Filterable table with priority badges, multi-project selectors, and inline quick-actions.
 * **Kanban Board**: Drag-and-drop columns (`To Do`, `In Progress`, `Under Review`, `Completed`) with real-time state synchronization.
 * **Subtasks & Notes**: Nested checklists with progress meters and markdown notes.
 
-### 📅 3. Interactive Academic Calendar (`/calendar`)
-* Dedicated monthly academic schedule view with status rings and priority badges.
+### 📅 3. Interactive Calendar (`/calendar`)
+* Dedicated monthly schedule view with status rings and priority badges.
 * Schedule tasks directly onto any calendar date with a single click.
 
-### ⏱️ 4. Pomodoro Study Focus Timer
-* 3 study modes: **25-min Study Focus**, **5-min Short Break**, and **15-min Long Break**.
+### ⏱️ 4. Pomodoro Focus Timer
+* 3 focus modes: **25-min Deep Focus**, **5-min Short Break**, and **15-min Long Break**.
 * Micro-interactions: Live ticking countdown pills on mobile headers, amber warning states for the final 3 minutes, and pulsing rose alerts for the final 60-second sprint.
 
-### 📊 5. Study Activity Heatmap & Analytics
+### 📊 5. Activity Heatmap & Analytics
 * **12-Week Sunday-Aligned Heatmap**: GitHub-style activity rings tracking daily completions with active day inspection.
 * **Animated Velocity Charts**: Interactive weekly output statistics and productivity breakdown.
 
-### 📑 6. Print-Perfect Academic PDF & ICS/CSV Export
-* **Isolated PDF Ledger Generator**: Clean print layout with university metadata headers, assignment checklists `[ ]`, and zero website chrome clutter.
+### 📑 6. Print-Perfect PDF & ICS/CSV Export
+* **Isolated PDF Ledger Generator**: Clean print layout with workspace metadata headers, task checklists `[ ]`, and zero website chrome clutter.
 * **Universal Calendar Export**: Export directly to `.ICS` (Google/Apple Calendar) and `.CSV`.
 
 ### 🔔 7. Automated Reminders & Celery Worker
@@ -88,6 +99,7 @@ Built specifically for students, researchers, and educators, TaskNova bridges th
 ### 🔐 8. Dual-Role RBAC & System Administration
 * **JWT Cryptographic Auth**: 15-minute access tokens + 7-day refresh tokens with PBKDF2 password hashing and rate limiting.
 * **Admin User Directory**: Administrator portal to manage accounts, inspect workloads, and toggle account access with self-deletion safeguards.
+* **Governor Console & Template Switchboard**: Aggregate platform metrics plus persona-template publishing — see “Unreleased” above.
 
 ---
 
@@ -124,13 +136,15 @@ TaskNova/
 │   │   ├── celery_app.py           # Celery beat schedules & task configuration
 │   │   ├── commands.py             # CLI commands (flask db-sync, flask seed, flask run-jobs)
 │   │   ├── auth/                   # JWT registration, login, and token refresh
-│   │   ├── projects/               # Course & syllabus management endpoints
+│   │   ├── projects/               # Project & workspace management endpoints
 │   │   ├── tasks/                  # Task ledger, Kanban, and subtask routes
-│   │   ├── admin/                  # Admin user directory, block & delete routes
-│   │   ├── analytics/              # Productivity metrics and report history
+│   │   ├── timetable/              # Routine scheduler: CRUD, auto-schedule, templates
+│   │   ├── admin/                  # Admin user directory, block/delete, template governance
+│   │   ├── analytics/              # Personal metrics plus aggregate governor stats
 │   │   ├── notifications/          # In-app notifications & cron trigger endpoints
 │   │   └── tasks_jobs/             # Asynchronous Celery reminder and digest tasks
-│   └── tests/                      # Automated pytest API test suite
+│   │   └── models/timetable.py     # TimetableSlot, TimetableAllocation, RoutineTemplateState
+│   └── tests/                      # Automated pytest API test suite (17 tests)
 └── frontend/
     ├── index.html                  # HTML5 SPA entrypoint with SVG favicon
     ├── vite.config.js              # Vite configuration
@@ -142,13 +156,13 @@ TaskNova/
     │   └── _redirects              # SPA rewrite rule for Netlify / Render Static
     └── src/
         ├── version.js              # Single source of truth for the UI version badge (APP_VERSION)
-        ├── App.vue                 # Master shell (Desktop sidebar, mobile nav, user menu)
+        ├── App.vue                 # Master shell (Desktop sidebar, premium mobile tab bar, user menu)
         ├── main.js                 # App initialization & Pinia store setup
         ├── style.css               # Design system, themes & print stylesheet
         ├── api/client.js           # Axios interceptors & auto-prefixing baseURL
         ├── components/             # Reusable UI components & modals
-        ├── stores/                 # Pinia state stores (auth, tasks, timer, notifications)
-        └── views/                  # Route views (Dashboard, Tasks, Calendar, Admin, etc.)
+        ├── stores/                 # Pinia state stores (auth, tasks, timer, notifications, timetable, admin)
+        └── views/                  # Route views (Dashboard, Tasks, Timetable, Calendar, Admin, etc.)
 ```
 
 ---
@@ -210,8 +224,15 @@ TaskNova implements **Zero-Trust Role-Based Access Control (RBAC)**:
 
 | Role | Creation | Permissions |
 | :--- | :--- | :--- |
-| `user` | Default on public registration (`/api/auth/register`) | Manage personal courses, task ledger, focus timer, and notifications. |
-| `admin` | Auto-bootstrapped via `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars | All user capabilities + access to Admin Directory (`/admin`), account management, and system analytics. |
+| `user` | Default on public registration (`/api/auth/register`) | Manage personal projects, routines, task ledger, focus timer, and notifications. |
+| `admin` | Auto-bootstrapped via `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars | Platform governor: member directory, access control, aggregate analytics, and routine-template publishing. Never exposes per-user content. |
+
+**Hygiene rules enforced in this repo:**
+
+* Never commit `.env` / `.env.local` — only `.env.example` files are tracked; secrets patterns (`*.pem`, `*.key`, credential JSON) are git-ignored.
+* `backend/.dockerignore` and `frontend/.dockerignore` keep local env files, virtualenvs, and dev state out of production images.
+* Backend dependencies are version-pinned in `backend/requirements.txt`; the frontend builds with `npm ci` (lockfile) on Node 20+ (`engines` field).
+* Change the default `ADMIN_PASSWORD` before any public deployment.
 
 ---
 
@@ -219,12 +240,12 @@ TaskNova implements **Zero-Trust Role-Based Access Control (RBAC)**:
 
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register new student user |
+| `POST` | `/api/auth/register` | Public | Register a new user |
 | `POST` | `/api/auth/login` | Public | Sign in and obtain JWT access + refresh tokens |
 | `POST` | `/api/auth/refresh` | Refresh Token | Refresh access token |
 | `GET` | `/api/auth/me` | Authenticated | Fetch current profile |
-| `GET/POST` | `/api/projects` | Authenticated | List or create courses |
-| `GET/PUT/DELETE` | `/api/projects/:id` | Owner | Manage course details |
+| `GET/POST` | `/api/projects` | Authenticated | List or create projects |
+| `GET/PUT/DELETE` | `/api/projects/:id` | Owner | Manage project details |
 | `GET/POST` | `/api/tasks` | Authenticated | List with filters (status, priority, due date) or create task |
 | `GET/PUT/DELETE` | `/api/tasks/:id` | Owner | Manage task |
 | `POST` | `/api/tasks/:id/complete` | Owner | Quick complete task |
@@ -232,6 +253,12 @@ TaskNova implements **Zero-Trust Role-Based Access Control (RBAC)**:
 | `GET` | `/api/notifications` | Authenticated | Fetch inbox notifications with unread counts |
 | `GET/POST` | `/api/notifications/trigger-jobs` | Public/Cron | Execute reminder scan and daily reports |
 | `GET/PATCH/DELETE` | `/api/admin/users` | Admin Only | User directory, block/unblock, and delete accounts |
+| `GET/POST` | `/api/timetable` | Authenticated | List or create routine blocks (collision-checked) |
+| `PUT/DELETE` | `/api/timetable/:id` | Owner | Update or delete a routine block |
+| `POST` | `/api/timetable/auto-schedule` | Authenticated | Preview or apply a Maker/Pomodoro day plan |
+| `POST` | `/api/timetable/apply-template` | Authenticated | Apply an enabled persona template |
+| `GET` | `/api/timetable/templates` | Authenticated | List admin-enabled templates |
+| `GET/PATCH` | `/api/admin/timetable/templates` | Admin Only | Template adoption stats and enable/disable |
 
 ---
 
