@@ -12,6 +12,7 @@ const authStore = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
 const error = ref("");
+const showPassword = ref(false);
 const formErrors = ref({});
 const form = reactive({ full_name: "", email: "", password: "" });
 
@@ -94,17 +95,28 @@ const submit = async () => {
             </FormField>
 
             <FormField label="Password" field-id="register-password" help="Use at least 8 characters." :error="formErrors.password || ''">
-              <input
-                id="register-password"
-                v-model="form.password"
-                class="input-field"
-                type="password"
-                autocomplete="new-password"
-                minlength="8"
-                placeholder="At least 8 characters"
-                required
-                :aria-invalid="!!formErrors.password"
-              />
+              <div class="relative">
+                <input
+                  id="register-password"
+                  v-model="form.password"
+                  class="input-field pr-11"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="new-password"
+                  minlength="8"
+                  placeholder="At least 8 characters"
+                  required
+                  :aria-invalid="!!formErrors.password"
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :aria-pressed="showPassword"
+                  @click="showPassword = !showPassword"
+                >
+                  <AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="17" />
+                </button>
+              </div>
             </FormField>
 
             <p v-if="error && !Object.keys(formErrors).length" class="field-error" role="alert">

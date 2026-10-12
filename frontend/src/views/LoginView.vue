@@ -12,6 +12,7 @@ const authStore = useAuthStore();
 const router = useRouter();
 const loading = ref(false);
 const error = ref("");
+const showPassword = ref(false);
 const form = reactive({ email: "", password: "" });
 
 const submit = async () => {
@@ -93,15 +94,26 @@ const submit = async () => {
             </FormField>
 
             <FormField label="Password" field-id="password">
-              <input
-                id="password"
-                v-model="form.password"
-                class="input-field"
-                type="password"
-                autocomplete="current-password"
-                placeholder="Enter your password"
-                required
-              />
+              <div class="relative">
+                <input
+                  id="password"
+                  v-model="form.password"
+                  class="input-field pr-11"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
+                  :aria-label="showPassword ? 'Hide password' : 'Show password'"
+                  :aria-pressed="showPassword"
+                  @click="showPassword = !showPassword"
+                >
+                  <AppIcon :name="showPassword ? 'eye-off' : 'eye'" :size="17" />
+                </button>
+              </div>
             </FormField>
 
             <p v-if="error" class="field-error" role="alert">

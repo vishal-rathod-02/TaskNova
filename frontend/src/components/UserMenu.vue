@@ -49,9 +49,9 @@ onBeforeUnmount(() => {
   document.removeEventListener("keydown", onKeydown);
 });
 
-const signOut = () => {
+const signOut = async () => {
   close();
-  authStore.logout();
+  await authStore.logout();
   router.push({ name: "login" });
 };
 </script>

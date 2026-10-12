@@ -194,48 +194,54 @@ watch(
     <!-- Mobile Bottom Navigation Bar -->
     <nav
       v-if="showShell"
-      class="fixed inset-x-0 bottom-0 z-40 grid border-t border-slate-200/80 bg-white/95 px-2 py-1 shadow-lg backdrop-blur-xl dark:border-slate-800 dark:bg-night-surface/95 md:hidden"
-      :class="authStore.isAdmin ? 'grid-cols-6' : 'grid-cols-5'"
+      class="fixed inset-x-0 bottom-0 z-40 grid border-t border-slate-200/80 bg-white/95 px-1.5 pt-1.5 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-slate-800 dark:bg-night-surface/95 md:hidden"
+      :class="authStore.isAdmin ? 'grid-cols-7' : 'grid-cols-6'"
+      :style="{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }"
       aria-label="Mobile navigation"
     >
       <router-link to="/" class="mobile-nav-item">
-        <AppIcon name="dashboard" :size="18" />
+        <span class="mobile-nav-chip"><AppIcon name="dashboard" :size="19" /></span>
         <span>Dashboard</span>
       </router-link>
 
       <router-link to="/projects" class="mobile-nav-item">
-        <AppIcon name="projects" :size="18" />
-        <span>Courses</span>
+        <span class="mobile-nav-chip"><AppIcon name="projects" :size="19" /></span>
+        <span>Projects</span>
       </router-link>
 
       <router-link to="/tasks" class="mobile-nav-item">
-        <AppIcon name="tasks" :size="18" />
+        <span class="mobile-nav-chip"><AppIcon name="tasks" :size="19" /></span>
         <span>Tasks</span>
       </router-link>
 
+      <router-link to="/timetable" class="mobile-nav-item">
+        <span class="mobile-nav-chip"><AppIcon name="timetable" :size="19" /></span>
+        <span>Routine</span>
+      </router-link>
+
       <router-link to="/calendar" class="mobile-nav-item">
-        <AppIcon name="calendar" :size="18" />
+        <span class="mobile-nav-chip"><AppIcon name="calendar" :size="19" /></span>
         <span>Calendar</span>
       </router-link>
 
       <router-link to="/notifications" class="mobile-nav-item relative">
-        <AppIcon name="bell" :size="18" />
+        <span class="mobile-nav-chip"><AppIcon name="bell" :size="19" /></span>
         <span>Inbox</span>
         <span
           v-if="notificationStore.unreadCount"
-          class="absolute right-3 top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-rose-500 px-1 font-mono text-[8px] font-bold text-white"
+          class="absolute right-1.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 font-mono text-[8px] font-bold text-white shadow-sm transition-transform duration-300"
         >
-          {{ notificationStore.unreadCount }}
+          {{ notificationStore.unreadCount > 99 ? "99+" : notificationStore.unreadCount }}
         </span>
       </router-link>
 
       <router-link v-if="authStore.isAdmin" to="/admin" class="mobile-nav-item">
-        <AppIcon name="admin" :size="18" />
+        <span class="mobile-nav-chip"><AppIcon name="admin" :size="19" /></span>
         <span>Directory</span>
       </router-link>
     </nav>
 
-    <!-- Global Study Focus Timer Modal -->
+    <!-- Global Focus Timer Modal -->
     <FocusTimerModal :is-open="isTimerOpen" @close="isTimerOpen = false" />
 
     <!-- Global Toast Notifications Stack -->
