@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, Response, current_app, jsonify, make_response, request
 
 from ..extensions import db
-from ..models import Project, Task, User
+from ..models import Project, Task, TimetableSlot, User
 from ..models.time import utcnow
 
 calendar_bp = Blueprint("calendar", __name__, url_prefix="/api/calendar")
@@ -107,6 +107,63 @@ def get_calendar_feed(token):
                 "END:VEVENT",
             ]
         )
+
+    # Phase 1: universal timetable slots flow into the same subscription feed.
+    _WEEKDAY_ICAL = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+    today = now_utc.date()
+    try:
+        slots = TimetableSlot.query.filter_by(user_id=user.id).all()
+    except Exception:
+        slots = []
+    for slot in slots:
+        try:
+            sh, sm = (int(p) for p in str(slot.start_time).split(":"))
+            eh, em = (int(p) for p in str(slot.end_time).split(":"))
+            if not (0 <= sh <= 23 and 0 <= sm <= 59 and 0 <= eh <= 23 and 0 <= em <= 59):
+                continue
+            if eh * 60 + em <= sh * 60 + sm:
+                continue
+        except (ValueError, AttributeError):
+            continue
+        if slot.specific_date is not None:
+            if slot.specific_date < today:
+                continue
+            event_date = slot.specific_date
+            rrule = None
+        elif slot.day_of_week is not None and 0 <= slot.day_of_week <= 6:
+            delta = (slot.day_of_week - today.weekday()) % 7
+            event_date = today + timedelta(days=delta)
+            rrule = f"RRULE:FREQ=WEEKLY;BYDAY={_WEEKDAY_ICAL[slot.day_of_week]}"
+        else:
+            continue
+        dtstart = _format_ical_datetime(datetime(event_date.year, event_date.month, event_date.day, sh, sm))
+        dtend = _format_ical_datetime(datetime(event_date.year, event_date.month, event_date.day, eh, em))
+        if not dtstart or not dtend:
+            continue
+        type_label = str(slot.slot_type or "focus_work").replace("_", " ").title()
+        summary = _escape_ical_text(f"[{type_label}] {slot.title}")
+        slot_desc = [f"Timetable: {type_label}"]
+        if slot.project:
+            slot_desc.append(f"Project: {slot.project.name}")
+        if slot.location:
+            slot_desc.append(f"Location: {slot.location}")
+        slot_desc.append(f"Open in TaskNova: {app_url}/timetable")
+        lines.extend(
+            [
+                "BEGIN:VEVENT",
+                f"UID:tasknova-slot-{slot.id}-{user.id}@tasknova",
+                f"DTSTAMP:{stamp}",
+                f"DTSTART:{dtstart}",
+                f"DTEND:{dtend}",
+                f"SUMMARY:{summary}",
+                f"DESCRIPTION:{_escape_ical_text(chr(10).join(slot_desc))}",
+                "STATUS:CONFIRMED",
+                f"URL:{app_url}/timetable",
+            ]
+        )
+        if rrule:
+            lines.append(rrule)
+        lines.append("END:VEVENT")
 
     lines.append("END:VCALENDAR")
     ical_content = "\r\n".join(lines) + "\r\n"

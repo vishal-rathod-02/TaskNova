@@ -13,6 +13,7 @@ class Project(db.Model):
 
     owner = db.relationship("User", back_populates="projects")
     tasks = db.relationship("Task", back_populates="project", lazy="select", cascade="all, delete-orphan")
+    timetable_slots = db.relationship("TimetableSlot", back_populates="project", lazy="select")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

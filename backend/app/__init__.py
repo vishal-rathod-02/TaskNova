@@ -14,10 +14,11 @@ from .celery_app import init_celery
 from .commands import register_commands
 from .config import Config
 from .extensions import cors, db, init_redis, jwt, migrate
-from .models import ActivityLog, Project, Task, User
+from .models import ActivityLog, Project, Task, TimetableAllocation, TimetableSlot, User
 from .notifications import notifications_bp
 from .projects import projects_bp
 from .tasks import tasks_bp
+from .timetable import timetable_bp
 
 
 import os
@@ -73,8 +74,40 @@ def sync_database_schema(app=None):
             # Called without app (should not happen); nothing to do.
             return False
         with ctx_app.app_context():
-            # 1. Create fresh tables for brand-new databases.
+            # 1. Create fresh tables for brand-new databases (also creates the
+            #    timetable_slot / timetable_allocation tables on legacy DBs,
+            #    since create_all() only adds missing tables, never alters them).
             db.create_all()
+
+            # 1b. Verify Phase-1 timetable tables exist (legacy Postgres keeps
+            #     old data; if create_all() was skipped/raced, log loudly).
+            try:
+                with db.engine.connect() as conn:
+                    existing = set(inspect(conn).get_table_names())
+                for _t in ("timetable_slot", "timetable_allocation"):
+                    if _t not in existing:
+                        # Retry once explicitly; create_all is idempotent.
+                        db.create_all()
+                        break
+                with db.engine.connect() as conn:
+                    existing = set(inspect(conn).get_table_names())
+                missing = {"timetable_slot", "timetable_allocation", "routine_template_state"} - existing
+                if missing:
+                    if logger:
+                        logger.error("Schema sync incomplete, missing tables: %s", sorted(missing))
+                    return False
+            except Exception as table_err:
+                if logger:
+                    logger.warning("Timetable table verify notice: %s", table_err)
+
+            # Seed governor template switches (all enabled by default).
+            try:
+                from .timetable.service import seed_template_states
+
+                seed_template_states()
+            except Exception as seed_err:
+                if logger:
+                    logger.warning("Routine template seed notice: %s", seed_err)
 
             # 2. Patch legacy tables created before newer User columns existed.
             #    Production Postgres keeps old data, so create_all() alone never
@@ -96,6 +129,8 @@ def sync_database_schema(app=None):
                     ctx_app,
                 )
                 _add_column_if_missing_postgres("user", "calendar_token VARCHAR(64)", ctx_app)
+                # Phase-3 column on pre-existing timetable_slot tables (harmless if absent table).
+                _add_column_if_missing_postgres("timetable_slot", "source_template VARCHAR(20)", ctx_app)
                 # Index backing the unique calendar_token feed lookup (idempotent).
                 try:
                     with db.engine.begin() as conn:
@@ -130,6 +165,12 @@ def sync_database_schema(app=None):
                             )
                         if "calendar_token" not in cols:
                             conn.execute(text('ALTER TABLE "user" ADD COLUMN calendar_token VARCHAR(64)'))
+                    try:
+                        slot_cols = {c["name"] for c in inspect(conn).get_columns("timetable_slot")}
+                    except Exception:
+                        slot_cols = set()
+                    if slot_cols and "source_template" not in slot_cols:
+                        conn.execute(text("ALTER TABLE timetable_slot ADD COLUMN source_template VARCHAR(20)"))
 
             # 3. Verify before touching ORM rows (avoids repeating the original crash).
             try:
@@ -195,6 +236,14 @@ def _bootstrap_admin(app):
                     Notification.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
                     DailyReport.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
                     ActivityLog.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
+                    legacy_slot_ids = [
+                        s.id for s in TimetableSlot.query.filter_by(user_id=legacy_admin.id).all()
+                    ]
+                    if legacy_slot_ids:
+                        TimetableAllocation.query.filter(
+                            TimetableAllocation.slot_id.in_(legacy_slot_ids)
+                        ).delete(synchronize_session=False)
+                        TimetableSlot.query.filter_by(user_id=legacy_admin.id).delete(synchronize_session=False)
                     db.session.delete(legacy_admin)
                     db.session.commit()
                     app.logger.info("Purged default public admin: admin@tasknova.com")
@@ -246,6 +295,7 @@ def create_app(config_override=None):
     app.register_blueprint(auth_bp)
     app.register_blueprint(projects_bp)
     app.register_blueprint(tasks_bp)
+    app.register_blueprint(timetable_bp)
     app.register_blueprint(calendar_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(analytics_bp)

@@ -28,6 +28,7 @@ class User(db.Model):
     activity_logs = db.relationship("ActivityLog", back_populates="actor", lazy="select")
     notifications = db.relationship("Notification", back_populates="user", lazy="select", cascade="all, delete-orphan")
     daily_reports = db.relationship("DailyReport", back_populates="user", lazy="select", cascade="all, delete-orphan")
+    timetable_slots = db.relationship("TimetableSlot", back_populates="owner", lazy="select", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
