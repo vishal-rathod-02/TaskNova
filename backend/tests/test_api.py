@@ -113,6 +113,45 @@ def test_admin_can_block_but_not_delete_an_admin(client, app):
     assert client.delete(f"/api/admin/users/{admin_user['id']}", headers=admin_headers).status_code == 400
 
 
+def test_admin_dashboard_reports_governor_metrics(client, app):
+    account = {"full_name": "Metric Member", "email": "metric@example.com", "password": "securepass"}
+    assert client.post("/api/auth/register", json=account).status_code == 201
+    with app.app_context():
+        admin = User(full_name="Metrics Admin", email="metrics-admin@example.com", role="admin")
+        admin.set_password("securepass")
+        db.session.add(admin)
+        db.session.commit()
+
+    admin_headers = auth_header(client, "metrics-admin@example.com", "securepass")
+    stats = client.get("/api/analytics/admin", headers=admin_headers)
+    assert stats.status_code == 200
+    for key in (
+        "total_users",
+        "signups_7d",
+        "signups_30d",
+        "weekly_active_users",
+        "activated_members",
+        "activation_rate",
+        "routine_adopters",
+        "routine_adoption_rate",
+        "total_routine_slots",
+        "total_allocations",
+        "templates_live",
+        "templates_disabled",
+        "total_members",
+        "active_members",
+        "blocked_members",
+        "total_admins",
+        "slot_type_mix",
+    ):
+        assert key in stats.json["stats"], f"missing governor metric: {key}"
+    assert stats.json["stats"]["signups_7d"] >= 1
+    assert stats.json["stats"]["templates_live"] == 4
+    assert stats.json["stats"]["templates_disabled"] == 0
+    assert stats.json["stats"]["total_members"] == 1
+    assert stats.json["stats"]["total_admins"] == 1
+
+
 def test_email_service_safe_fallback_and_formatting(app):
     from app.services.email_service import send_daily_digest_email, send_deadline_email, send_email
 
