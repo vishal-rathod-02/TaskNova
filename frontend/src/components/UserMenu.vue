@@ -99,11 +99,11 @@ const signOut = async () => {
       <!-- User Information -->
       <span class="min-w-0 flex-1">
         <span class="block truncate text-sm font-bold text-slate-900 dark:text-white">
-          {{ authStore.user?.full_name || "Student User" }}
+              {{ authStore.user?.full_name || "Member" }}
         </span>
         <span class="flex items-center gap-1 font-mono text-[11px] font-semibold uppercase text-brand-600 dark:text-brand-400">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-          {{ authStore.user?.role === 'admin' ? 'Administrator' : 'Student Account' }}
+              {{ authStore.user?.role === 'admin' ? 'Administrator' : 'Member Account' }}
         </span>
       </span>
 
@@ -155,7 +155,7 @@ const signOut = async () => {
           <div class="mt-2.5 flex items-center justify-between border-t border-slate-200/60 pt-2 text-[10px] font-mono text-slate-500 dark:border-slate-800 dark:text-slate-400">
             <span>ROLE</span>
             <span class="font-bold text-brand-600 dark:text-brand-400 uppercase">
-              {{ authStore.user?.role === 'admin' ? 'System Administrator' : 'Active Student' }}
+              {{ authStore.user?.role === 'admin' ? 'System Administrator' : 'Active Member' }}
             </span>
           </div>
         </div>
@@ -251,7 +251,7 @@ const signOut = async () => {
 
         <!-- Release Version Tag -->
         <div class="mt-1 flex items-center justify-between px-2 pt-0.5 text-[10px] font-mono text-slate-400 dark:text-slate-500">
-          <span>TaskNova Academic</span>
+          <span>TaskNova</span>
           <span class="font-semibold text-slate-500 dark:text-slate-400">v{{ APP_VERSION }}</span>
         </div>
       </div>

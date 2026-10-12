@@ -122,7 +122,7 @@ const handleSaveTask = async (formData) => {
       showToast("Assignment updated in calendar.");
     } else {
       await taskStore.createTask(payload);
-      showToast("Assignment scheduled on academic calendar.");
+      showToast("Task scheduled on the calendar.");
     }
     isTaskModalOpen.value = false;
     await taskStore.fetchTasks();
@@ -165,9 +165,9 @@ onMounted(loadCalendarData);
   <div class="page-shell">
     <!-- Header -->
     <PageHeader
-      title="Academic Calendar"
-      description="Visualize deadlines, exam schedules, and course milestones across your semester."
-      badge="Semester Schedule"
+      title="Calendar"
+      description="Visualize deadlines and milestones across your schedule."
+      badge="Schedule"
     >
       <template #actions>
         <!-- Export & Live Sync Dropdown with Click-Outside and Transition -->
@@ -220,7 +220,7 @@ onMounted(loadCalendarData);
               <button
                 type="button"
                 class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
-                @click="exportTasksToICS(taskStore.items, 'TaskNova Academic Schedule'); isExportOpen = false"
+                @click="exportTasksToICS(taskStore.items, 'TaskNova Schedule'); isExportOpen = false"
               >
                 <span class="flex items-center gap-2.5">
                   <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950/60 dark:text-brand-300">
@@ -248,7 +248,7 @@ onMounted(loadCalendarData);
               <button
                 type="button"
                 class="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white"
-                @click="printAcademicLedger(taskStore.items, 'Academic Calendar Schedule'); isExportOpen = false"
+                @click="printAcademicLedger(taskStore.items, 'Calendar Schedule'); isExportOpen = false"
               >
                 <span class="flex items-center gap-2.5">
                   <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300">
@@ -274,7 +274,7 @@ onMounted(loadCalendarData);
     </PageHeader>
 
     <p v-if="!hasProjects" class="field-help mt-4">
-      Create a <router-link class="font-bold text-brand-600 underline dark:text-brand-400" to="/projects">course/project</router-link> before scheduling calendar assignments.
+      Create a <router-link class="font-bold text-brand-600 underline dark:text-brand-400" to="/projects">project</router-link> before scheduling assignments.
     </p>
 
     <!-- Error Alert -->
@@ -312,7 +312,7 @@ onMounted(loadCalendarData);
             </div>
             <div>
               <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">Live Calendar Subscription</h2>
-              <p class="text-xs text-slate-500 dark:text-slate-400">Sync all coursework & assignments seamlessly with your calendar app</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">              Sync all tasks & assignments seamlessly with your calendar app</p>
             </div>
           </div>
           <button

@@ -17,13 +17,13 @@ const form = reactive({
   description: "",
 });
 
-const courseTemplates = [
-  "Data Structures & Algorithms",
-  "Web Application Development",
-  "Database Management Systems",
-  "Operating Systems Lab",
-  "Senior Capstone Project",
-  "Machine Learning & AI",
+const projectTemplates = [
+  "Product Launch",
+  "Client Project",
+  "Home & Life Admin",
+  "Fitness Program",
+  "Learning Sprint",
+  "Side Business",
 ];
 
 watch(
@@ -66,10 +66,10 @@ const submitForm = () => {
             </div>
             <div>
               <h2 class="font-display text-lg font-bold text-slate-900 dark:text-white">
-                {{ isEdit ? "Edit Course / Project" : "New Course / Project" }}
+                {{ isEdit ? "Edit Project" : "New Project" }}
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400">
-                {{ isEdit ? "Update course details and description." : "Organize your subjects, research labs, or project teams." }}
+                {{ isEdit ? "Update project details and description." : "Organize your teams, clients, or focus areas." }}
               </p>
             </div>
           </div>
@@ -83,9 +83,9 @@ const submitForm = () => {
         </div>
 
         <form class="mt-5 space-y-4" @submit.prevent="submitForm">
-          <!-- Course Name -->
-          <div>
-            <label class="field-label" for="project-name">Project / Course Name <span class="text-rose-500">*</span></label>
+            <!-- Project Name -->
+            <div>
+              <label class="field-label" for="project-name">Project Name <span class="text-rose-500">*</span></label>
             <input
               id="project-name"
               v-model="form.name"
@@ -104,7 +104,7 @@ const submitForm = () => {
             <label class="field-label">Quick Suggestions</label>
             <div class="mt-1.5 flex flex-wrap gap-1.5">
               <button
-                v-for="tpl in courseTemplates"
+                v-for="tpl in projectTemplates"
                 :key="tpl"
                 type="button"
                 class="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-800 dark:bg-night-card dark:text-slate-300 dark:hover:border-brand-700 dark:hover:bg-brand-950/40 dark:hover:text-brand-300"
@@ -117,13 +117,13 @@ const submitForm = () => {
 
           <!-- Description -->
           <div>
-            <label class="field-label" for="project-desc">Course Description & Goals</label>
+              <label class="field-label" for="project-desc">Description & Goals</label>
             <textarea
               id="project-desc"
               v-model="form.description"
               class="input-field min-h-24 resize-y"
               maxlength="5000"
-              placeholder="Syllabus objectives, faculty details, semester milestones, or team members..."
+              placeholder="Goals, milestones, key dates, or team members..."
             ></textarea>
             <span class="field-help">Helps you structure all related tasks and deliverables.</span>
             <span v-if="formErrors.description" class="field-error"><AppIcon name="info" :size="14" />{{ formErrors.description }}</span>

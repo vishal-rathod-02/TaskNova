@@ -195,7 +195,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
     inbox_url = f"{app_url}/notifications"
     tasks_url = f"{app_url}/tasks"
 
-    greeting_name = user_name or "Student"
+    greeting_name = user_name or "there"
     alert_badge = "OVERDUE ASSIGNMENT" if is_overdue else "DEADLINE WARNING"
     badge_bg = "#dc2626" if is_overdue else "#d97706"
     title_prefix = "🚨 Overdue" if is_overdue else "⏰ Due Soon"
@@ -222,7 +222,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
                   <td>
                     {logo_img}
                     <span style="display: inline-block; background-color: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">
-                      TaskNova Academic Alert
+                      TaskNova Alert
                     </span>
                     <h1 style="margin: 8px 0 0 0; font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;">
                       {title_prefix}
@@ -240,7 +240,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
                 Hello <strong>{greeting_name}</strong>,
               </p>
               <p style="margin: 0 0 20px 0; font-size: 14px; line-height: 1.6; color: #94a3b8;">
-                This is an automated academic deadline notification for your active coursework in <strong>TaskNova</strong>:
+                This is an automated deadline notification from <strong>TaskNova</strong>:
               </p>
 
               <!-- Task Card Pill -->
@@ -255,7 +255,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
                     </h3>
                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 12px; color: #94a3b8;">
                       <tr>
-                        <td style="padding: 4px 0;">📚 <strong>Course:</strong> {project_name}</td>
+                        <td style="padding: 4px 0;">📚 <strong>Project:</strong> {project_name}</td>
                       </tr>
                       <tr>
                         <td style="padding: 4px 0;">⏰ <strong>Target Due:</strong> <span style="color: {'#f87171' if is_overdue else '#fbbf24'}; font-weight: 700;">{due_date_str}</span></td>
@@ -285,7 +285,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
           <!-- Footer -->
           <tr>
             <td style="background-color: #0f172a; padding: 16px 28px; border-top: 1px solid #334155; text-align: center; font-size: 11px; color: #64748b;">
-              &copy; TaskNova Academic Workplace &bull; Empowering Focused Student Productivity
+              &copy; TaskNova &bull; One calm daily hub.
             </td>
           </tr>
         </table>
@@ -295,7 +295,7 @@ def send_deadline_email(user_email, user_name, task_title, project_name, due_dat
 </body>
 </html>
 """
-    plain = f"""TaskNova Academic Alert: {title_prefix}
+    plain = f"""TaskNova Alert: {title_prefix}
 
 Hello {greeting_name},
 
@@ -321,7 +321,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
     )
     inbox_url = f"{app_url}/notifications"
 
-    greeting_name = user_name or "Student"
+    greeting_name = user_name or "there"
     date_str = digest_data.get("report_date") or "Today"
     total = digest_data.get("total_tasks", 0)
     completed = digest_data.get("completed_tasks", 0)
@@ -330,7 +330,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
     rate = digest_data.get("completion_rate", 0)
     grade = digest_data.get("grade", "A")
     momentum = digest_data.get("momentum", "Active Progress")
-    quote = digest_data.get("quote", "Consistent daily study sprints build unstoppable academic momentum.")
+    quote = digest_data.get("quote", "Consistent daily sprints build unstoppable momentum.")
 
     subject = f"📊 Daily Productivity Digest - {date_str} (Grade {grade}) - TaskNova"
 
@@ -362,7 +362,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
                       {date_str} Digest
                     </h1>
                     <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500;">
-                      Prepared for {greeting_name} &bull; Academic Grade: <strong>{grade}</strong>
+                      Prepared for {greeting_name} &bull; Grade: <strong>{grade}</strong>
                     </p>
                   </td>
                 </tr>
@@ -443,7 +443,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
                 <tr>
                   <td align="center">
                     <a href="{inbox_url}" style="display: inline-block; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 700; padding: 14px 28px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);">
-                      View Interactive Digest & Course Breakdown &rarr;
+                      View Interactive Digest & Project Breakdown &rarr;
                     </a>
                   </td>
                 </tr>
@@ -454,7 +454,7 @@ def send_daily_digest_email(user_email, user_name, digest_data):
           <!-- Footer -->
           <tr>
             <td style="background-color: #0b0f19; padding: 18px 28px; border-top: 1px solid #1e293b; text-align: center; font-size: 11px; color: #64748b;">
-              &copy; TaskNova Academic Workplace &bull; Sent to {user_email}
+              &copy; TaskNova &bull; Sent to {user_email}
             </td>
           </tr>
         </table>
@@ -478,7 +478,7 @@ Here is your daily study workload summary:
 
 "{quote}"
 
-View your interactive digest and course breakdown:
+View your interactive digest and project breakdown:
 {inbox_url}
 """
     return send_email(user_email, subject, html, plain)

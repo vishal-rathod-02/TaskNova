@@ -10,7 +10,7 @@ import AppIcon from "../components/AppIcon.vue";
       </div>
       <h1 class="font-display mt-5 text-3xl font-extrabold text-slate-900 dark:text-white">Page Not Found</h1>
       <p class="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-        The course page, assignment, or resource you are looking for does not exist in this workspace ledger.
+        The page, task, or resource you are looking for does not exist in this workspace ledger.
       </p>
       <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
         <router-link to="/" class="btn-primary gap-2">

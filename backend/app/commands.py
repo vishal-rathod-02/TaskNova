@@ -80,7 +80,7 @@ def register_commands(app):
 
     @app.cli.command("test-digest-email")
     @click.option("--to", required=True, help="Recipient email address")
-    @click.option("--name", default="Academic Scholar", help="Recipient full name")
+    @click.option("--name", default="Team Member", help="Recipient full name")
     def test_digest_email_command(to, name):
         """Send a sample Daily Productivity Digest email to test formatting."""
         from .models.notification import _compute_digest_stats

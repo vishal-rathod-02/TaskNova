@@ -57,12 +57,12 @@ def get_calendar_feed(token):
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//TaskNova//Academic Task Ledger//EN",
+        "PRODID:-//TaskNova//Routine & Task Ledger//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:TaskNova Schedule ({user.full_name})",
         "X-WR-TIMEZONE:UTC",
-        "X-WR-CALDESC:Live coursework, assignments, and exam deadlines from TaskNova",
+        "X-WR-CALDESC:Live tasks, routines, and deadline reminders from TaskNova",
     ]
 
     for task in tasks:
@@ -72,12 +72,12 @@ def get_calendar_feed(token):
         # Standard 1-hour block for assignment deadline / exam
         dtstart = _format_ical_datetime(due - timedelta(minutes=30))
         dtend = _format_ical_datetime(due)
-        project_name = task.project.name if task.project else "Course"
+        project_name = task.project.name if task.project else "General"
         summary = _escape_ical_text(f"[{project_name}] {task.title}")
         description_lines = []
         if task.description:
             description_lines.append(task.description.strip())
-        description_lines.append(f"Course: {project_name}")
+        description_lines.append(f"Project: {project_name}")
         description_lines.append(f"Status: {task.status.upper()}")
         description_lines.append(f"Priority: {task.priority.upper()}")
         description_lines.append(f"Open in TaskNova: {app_url}/tasks")

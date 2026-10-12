@@ -44,7 +44,7 @@ const loadProjects = async () => {
   try {
     await withMinLoading(projectStore.fetchProjects(), 1800);
   } catch (requestError) {
-    error.value = requestMessage(requestError, "Unable to load courses & projects.");
+    error.value = requestMessage(requestError, "Unable to load projects.");
   }
 };
 
@@ -76,10 +76,10 @@ const handleSaveProject = async (formData) => {
   try {
     if (isEditMode.value && selectedProject.value) {
       await projectStore.updateProject(selectedProject.value.id, formData);
-      showToast("Course / Project updated successfully.");
+      showToast("Project updated successfully.");
     } else {
       await projectStore.createProject(formData);
-      showToast("New Course / Project created.");
+      showToast("New project created.");
     }
     isProjectModalOpen.value = false;
   } catch (requestError) {
@@ -125,7 +125,7 @@ const handleCreateTask = async (formData) => {
       due_date: toUtcIso(formData.due_date),
     });
     isTaskModalOpen.value = false;
-    showToast("Task added to course.");
+    showToast("Task added to project.");
     await projectStore.fetchProjects();
   } catch (err) {
     taskFormErrors.value = err.response?.data?.errors || {};
@@ -141,13 +141,13 @@ onMounted(loadProjects);
 <template>
   <div class="page-shell">
     <PageHeader
-      title="Courses & Academic Projects"
+      title="Projects & Workspaces"
       description="Organize your curriculum, group research projects, and subject assignments into distinct ledgers."
       :badge="`${projectStore.items.length} Active`"
     >
       <template #actions>
         <button class="btn-primary gap-2" type="button" @click="openCreateModal">
-          <AppIcon name="plus" :size="16" /> New Course / Project
+          <AppIcon name="plus" :size="16" /> New Project
         </button>
       </template>
     </PageHeader>
@@ -164,7 +164,7 @@ onMounted(loadProjects);
           v-model="searchQuery"
           type="text"
           class="input-field !mt-0 pl-10"
-          placeholder="Search courses or projects..."
+          placeholder="Search projects..."
         />
       </div>
 
@@ -193,12 +193,12 @@ onMounted(loadProjects);
     <EmptyState
       v-else-if="!projectStore.items.length"
       class="mt-10"
-      title="No courses or projects yet"
-      description="Create your first academic project to begin tracking syllabus topics, homework assignments, and deadlines."
+      title="No projects yet"
+      description="Create your first project to begin tracking topics, assignments, and deadlines."
     >
       <template #actions>
         <button class="btn-primary gap-2" type="button" @click="openCreateModal">
-          <AppIcon name="plus" :size="16" /> Create First Course
+          <AppIcon name="plus" :size="16" /> Create First Project
         </button>
       </template>
     </EmptyState>
@@ -221,7 +221,7 @@ onMounted(loadProjects);
               <button
                 type="button"
                 class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white"
-                title="Edit Course"
+                title="Edit Project"
                 @click="openEditModal(project)"
               >
                 <AppIcon name="edit" :size="16" />
@@ -229,7 +229,7 @@ onMounted(loadProjects);
               <button
                 type="button"
                 class="rounded-lg p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
-                title="Delete Course"
+                title="Delete Project"
                 @click="promptDelete(project)"
               >
                 <AppIcon name="trash" :size="16" />
@@ -242,7 +242,7 @@ onMounted(loadProjects);
           </h2>
 
           <p class="mt-1.5 line-clamp-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            {{ project.description || "No specific syllabus or description added." }}
+            {{ project.description || "No description added yet." }}
           </p>
         </div>
 
@@ -299,9 +299,9 @@ onMounted(loadProjects);
     <!-- Confirmation Modal for Delete -->
     <ConfirmModal
       :is-open="isDeleteModalOpen"
-      title="Delete Course & Tasks?"
+      title="Delete Project & Tasks?"
       :message="`Are you sure you want to delete '${projectToDelete?.name}'? Every task and assignment inside it will be permanently removed.`"
-      confirm-text="Delete Course"
+      confirm-text="Delete Project"
       :loading="deleteLoading"
       :is-danger="true"
       @cancel="isDeleteModalOpen = false"

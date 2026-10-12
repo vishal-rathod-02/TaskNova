@@ -5,7 +5,7 @@ const props = defineProps({
   size: { type: String, default: "md" }, // 'sm', 'md', 'lg', 'xl'
   showTagline: { type: Boolean, default: true },
   showText: { type: Boolean, default: true },
-  tagline: { type: String, default: "Academic Workplace" },
+  tagline: { type: String, default: "One calm daily hub." },
   isLink: { type: Boolean, default: true },
   to: { type: String, default: "/" },
 });

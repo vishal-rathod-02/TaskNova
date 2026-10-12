@@ -164,13 +164,13 @@ const getPriorityChipClass = (task) => {
         </div>
       </div>
 
-      <!-- Controls: Today, Prev/Next & Course Filter -->
+      <!-- Controls: Today, Prev/Next & Project Filter -->
       <div class="grid grid-cols-[1fr_auto_auto] items-center gap-2 sm:flex sm:flex-wrap">
         <select
           v-model="selectedFilterProject"
           class="input-field min-h-10 !mt-0 w-full min-w-0 truncate text-xs sm:w-auto sm:min-w-[140px]"
         >
-          <option value="">All Courses</option>
+          <option value="">All Projects</option>
           <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
 
@@ -256,7 +256,7 @@ const getPriorityChipClass = (task) => {
             :key="task.id"
             class="flex cursor-pointer items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold transition-transform hover:scale-[1.02]"
             :class="getPriorityChipClass(task)"
-            :title="`${task.title} (${task.project_name || 'No Course'})`"
+            :title="`${task.title} (${task.project_name || 'No Project'})`"
             @click.stop="emit('open-detail', task)"
           >
             <span

@@ -38,11 +38,11 @@ const submit = async () => {
         <BrandLogo size="lg" to="/login" />
 
         <h1 class="font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-          Keep a clear, focused ledger of your academic work.
+          Keep a clear, focused ledger of your work.
         </h1>
 
         <p class="body-copy max-w-lg text-base">
-          From multi-week capstone projects to weekly lab assignments, TaskNova keeps deadlines, course history, and study momentum in one elevated workspace.
+          From multi-week launches to weekly deliverables, TaskNova keeps deadlines, project history, and momentum in one elevated workspace.
         </p>
 
         <!-- Feature List -->
@@ -51,7 +51,7 @@ const submit = async () => {
             <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
               <AppIcon name="check" :size="14" />
             </div>
-            <span>Course & Syllabus Ledgers</span>
+            <span>Project Ledgers</span>
           </div>
           <div class="flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
             <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
@@ -78,7 +78,7 @@ const submit = async () => {
       <section class="lg:col-span-5">
         <div class="surface-elevated p-8">
           <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Sign In</h2>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter your credentials to enter your academic workspace.</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Enter your credentials to enter your workspace.</p>
 
           <form class="mt-6 space-y-4" @submit.prevent="submit" novalidate>
             <FormField label="Email Address" field-id="email">
@@ -88,7 +88,7 @@ const submit = async () => {
                 class="input-field"
                 type="email"
                 autocomplete="email"
-                placeholder="student@university.edu"
+                placeholder="you@example.com"
                 required
               />
             </FormField>
@@ -132,7 +132,7 @@ const submit = async () => {
               Create an account
             </router-link>
             <div class="mt-3 flex items-center justify-center gap-2 text-[11px] font-mono text-slate-400 dark:text-slate-500">
-              <span>TaskNova Academic</span>
+              <span>TaskNova</span>
               <span>•</span>
               <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold text-slate-600 dark:text-slate-400">v{{ APP_VERSION }}</span>
             </div>

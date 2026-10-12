@@ -193,14 +193,14 @@ const getLevelClass = (level, isFuture) => {
     <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 dark:border-slate-800">
       <div>
         <div class="flex items-center gap-2">
-          <h2 class="section-title">Academic Momentum & Study Matrix</h2>
+          <h2 class="section-title">Momentum & Consistency Matrix</h2>
           <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
             <AppIcon name="fire" :size="14" class="text-amber-500 animate-pulse" />
             {{ streakInfo.currentStreak }} Day Streak
           </span>
         </div>
         <p class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          Visual record of daily task velocity and study consistency across the last 12 academic weeks
+          Visual record of daily task velocity and consistency across the last 12 weeks
         </p>
       </div>
 
@@ -336,7 +336,7 @@ const getLevelClass = (level, isFuture) => {
 
     <!-- Heatmap Footer & Intensity Legend -->
     <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-xs text-slate-400 dark:border-slate-800">
-      <span class="font-mono text-[11px]">84 Academic Days · Click or hover any cell to inspect exact date</span>
+      <span class="font-mono text-[11px]">84 Days · Click or hover any cell to inspect exact date</span>
 
       <div class="flex items-center gap-1.5 font-mono text-[11px]">
         <span>Less</span>

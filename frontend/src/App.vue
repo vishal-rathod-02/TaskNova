@@ -43,7 +43,7 @@ watch(
     >
       <!-- Workspace Brand Logo -->
       <div class="px-1">
-        <BrandLogo size="md" tagline="Academic Workplace" />
+        <BrandLogo size="md" tagline="One calm daily hub." />
       </div>
 
       <!-- Quick Study Timer Action Button with Live Clock Display -->
@@ -92,7 +92,7 @@ watch(
 
         <router-link to="/projects" class="nav-item">
           <AppIcon name="projects" :size="18" />
-          <span>Courses & Projects</span>
+          <span>Projects & Workspaces</span>
         </router-link>
 
         <router-link to="/tasks" class="nav-item">

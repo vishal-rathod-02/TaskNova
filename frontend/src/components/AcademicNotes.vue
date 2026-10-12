@@ -121,7 +121,7 @@ const parsedHtml = computed(() => {
       class="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-night-surface"
     >
       <div class="flex items-center justify-between mb-3">
-        <span class="data-label !text-[11px]">Syllabus Checkpoints & Subtasks</span>
+          <span class="data-label !text-[11px]">Checkpoints & Subtasks</span>
         <span class="font-mono text-xs font-bold text-slate-700 dark:text-slate-300">
           {{ subtaskData.completed }}/{{ subtaskData.total }} Completed ({{ subtaskData.percentage }}%)
         </span>

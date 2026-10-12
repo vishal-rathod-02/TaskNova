@@ -176,7 +176,7 @@ onBeforeUnmount(() => {
 
           <!-- Loading Indicator overlay -->
           <div v-if="loading && !digestData" class="p-10">
-            <AppLoader size="md" text="Compiling academic productivity metrics..." />
+            <AppLoader size="md" text="Compiling productivity metrics..." />
           </div>
 
           <!-- Digest Content Body -->
@@ -293,10 +293,10 @@ onBeforeUnmount(() => {
                 </div>
                 <div class="min-w-0 flex-1">
                   <p class="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
-                    Academic Momentum Insight
+                    Momentum Insight
                   </p>
                   <p class="mt-1 text-xs italic leading-relaxed text-slate-700 dark:text-slate-300">
-                    "{{ digest?.quote || 'Consistent daily study sprints build unstoppable academic momentum.' }}"
+                    "{{ digest?.quote || 'Consistent daily sprints build unstoppable momentum.' }}"
                   </p>
                 </div>
               </div>
@@ -311,7 +311,7 @@ onBeforeUnmount(() => {
                   :class="activeTab === 'courses' ? 'bg-brand-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300'"
                   @click="activeTab = 'courses'"
                 >
-                  Courses ({{ digest?.courses?.length || 0 }})
+                  Projects ({{ digest?.courses?.length || 0 }})
                 </button>
 
                 <button
@@ -336,10 +336,10 @@ onBeforeUnmount(() => {
                 </button>
               </div>
 
-              <!-- Tab 1: Course Breakdown -->
+              <!-- Tab 1: Project Breakdown -->
               <div v-if="activeTab === 'courses'" class="mt-3 space-y-2.5">
                 <div v-if="!digest?.courses?.length" class="p-4 text-center text-xs text-slate-400">
-                  No active courses enrolled yet.
+                  No active projects yet.
                 </div>
                 <div
                   v-for="course in digest?.courses || []"

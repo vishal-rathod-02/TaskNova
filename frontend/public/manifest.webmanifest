@@ -1,7 +1,7 @@
 {
-  "name": "TaskNova — Academic Workplace",
+  "name": "TaskNova — One Calm Daily Hub",
   "short_name": "TaskNova",
-  "description": "Modern Academic & Student Workplace Productivity Suite",
+  "description": "One calm daily hub for tasks, routines, and focus",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

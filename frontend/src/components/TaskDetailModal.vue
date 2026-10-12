@@ -153,7 +153,7 @@ const handleAddSubtask = async () => {
 
   try {
     await updateTask(task.value.id, { description: updatedDesc });
-    showToast("Checkpoint added to syllabus.");
+    showToast("Checkpoint added.");
     emit("updated", task.value);
   } catch (err) {
     showToast("Unable to add subtask.", "error");
@@ -189,7 +189,7 @@ const formatActivityDate = (date) =>
                 </span>
               </div>
               <h2 class="break-words font-display text-base font-bold text-slate-900 dark:text-white sm:text-lg">
-                {{ task?.title || 'Academic Task' }}
+                {{ task?.title || 'Untitled Task' }}
               </h2>
             </div>
           </div>
@@ -286,7 +286,7 @@ const formatActivityDate = (date) =>
           <!-- Description & Academic Notes Section -->
           <div>
             <div class="flex items-center justify-between mb-2">
-              <span class="data-label block">Assignment Notes & Syllabus</span>
+              <span class="data-label block">Description & Notes</span>
             </div>
             
             <div class="rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-night-card">
@@ -296,7 +296,7 @@ const formatActivityDate = (date) =>
                 @toggle-subtask="handleToggleSubtask"
               />
               <p v-else class="text-xs italic text-slate-400">
-                No description or syllabus details provided yet.
+                No description or notes provided yet.
               </p>
 
               <!-- Quick Add Checkpoint/Subtask Form -->

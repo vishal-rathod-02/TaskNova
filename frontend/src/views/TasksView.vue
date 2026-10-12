@@ -81,9 +81,9 @@ const filters = reactive({
 });
 
 const projectName = computed(() => {
-  if (!filters.project_id) return "All Courses";
+  if (!filters.project_id) return "All Projects";
   const p = projectStore.items.find((project) => project.id === Number(filters.project_id));
-  return p ? p.name : "All Courses";
+  return p ? p.name : "All Projects";
 });
 
 const hasProjects = computed(() => projectStore.items.length > 0);
@@ -257,7 +257,7 @@ const formatActivityDate = (date) =>
   <div class="page-shell">
     <PageHeader
       title="Task Ledger & Workspace"
-      :description="projectName === 'All Courses' ? 'Manage your comprehensive academic assignments, deadlines, and project milestones.' : `Filtered for ${projectName}.`"
+      :description="projectName === 'All Projects' ? 'Manage your assignments, deadlines, and project milestones.' : `Filtered for ${projectName}.`"
       :badge="projectName"
     >
       <template #actions>
@@ -347,7 +347,7 @@ const formatActivityDate = (date) =>
     </PageHeader>
 
     <p v-if="!hasProjects" class="field-help mt-4">
-      Create a <router-link class="font-bold text-brand-600 underline dark:text-brand-400" to="/projects">course/project</router-link> before adding tasks.
+      Create a <router-link class="font-bold text-brand-600 underline dark:text-brand-400" to="/projects">project</router-link> before adding tasks.
     </p>
 
     <!-- Toolbar: Search, View Switcher & Filter Controls -->
@@ -399,9 +399,9 @@ const formatActivityDate = (date) =>
         @submit.prevent="loadTasks"
       >
         <div>
-          <label class="field-label">Course / Project</label>
+          <label class="field-label">Project</label>
           <select v-model="filters.project_id" class="input-field" @change="loadTasks">
-            <option value="">All Courses</option>
+            <option value="">All Projects</option>
             <option v-for="p in projectStore.items" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>

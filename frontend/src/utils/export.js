@@ -1,4 +1,4 @@
-export const exportTasksToCSV = (tasks = [], filename = "tasknova-academic-ledger.csv") => {
+export const exportTasksToCSV = (tasks = [], filename = "tasknova-ledger.csv") => {
   if (!tasks.length) return;
 
   const headers = ["ID", "Title", "Course / Project", "Status", "Priority", "Due Date", "Description"];
@@ -37,7 +37,7 @@ export const exportTasksToCSV = (tasks = [], filename = "tasknova-academic-ledge
   URL.revokeObjectURL(url);
 };
 
-export const exportTasksToICS = (tasks = [], calendarName = "TaskNova Academic Deadlines") => {
+export const exportTasksToICS = (tasks = [], calendarName = "TaskNova Deadlines") => {
   if (!tasks.length) return;
 
   const formatDateToICS = (date) => {
@@ -56,13 +56,13 @@ export const exportTasksToICS = (tasks = [], calendarName = "TaskNova Academic D
 
       return [
         "BEGIN:VEVENT",
-        `UID:task-${t.id}@tasknova.academic`,
+        `UID:task-${t.id}@tasknova`,
         `DTSTAMP:${nowFormatted}`,
         `DTSTART:${dueFormatted}`,
         `DTEND:${dueFormatted}`,
         `SUMMARY:[${course}] ${title}`,
         `DESCRIPTION:${desc}\\n\\nStatus: ${t.status}\\nPriority: ${t.priority}`,
-        `CATEGORIES:${course},Academics`,
+        `CATEGORIES:${course},TaskNova`,
         "STATUS:CONFIRMED",
         "END:VEVENT"
       ].join("\r\n");
@@ -76,7 +76,7 @@ export const exportTasksToICS = (tasks = [], calendarName = "TaskNova Academic D
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//TaskNova//Academic Workplace//EN",
+    "PRODID:-//TaskNova//Workplace//EN",
     `X-WR-CALNAME:${calendarName}`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
@@ -258,7 +258,7 @@ export const printTimetableAgenda = (slots = [], mode = "week", title = "Weekly 
       <span class="dot" style="background: ${dot(s.slot_type)};"></span>
       <div class="block-body">
         <div class="block-title">${escapeHtml(s.title)}</div>
-        <div class="block-meta">${escapeHtml(s.start_time)} â€“ ${escapeHtml(s.end_time)} &bull; ${escapeHtml(typeLabel(s.slot_type))}${s.project_name ? ` &bull; ${escapeHtml(s.project_name)}` : ""}${s.location ? ` &bull; ${escapeHtml(s.location)}` : ""}</div>
+        <div class="block-meta">${escapeHtml(s.start_time)} – ${escapeHtml(s.end_time)} &bull; ${escapeHtml(typeLabel(s.slot_type))}${s.project_name ? ` &bull; ${escapeHtml(s.project_name)}` : ""}${s.location ? ` &bull; ${escapeHtml(s.location)}` : ""}</div>
       </div>
       <div class="block-check">[ ]</div>
     </div>`;
@@ -326,7 +326,7 @@ export const printTimetableAgenda = (slots = [], mode = "week", title = "Weekly 
       <body>
         <div class="header">
           <div>
-            <div class="brand-title">TaskNova Â· ${mode === "day" ? "Daily Agenda" : "Weekly Routine"}</div>
+            <div class="brand-title">TaskNova · ${mode === "day" ? "Daily Agenda" : "Weekly Routine"}</div>
             <div class="brand-sub">${escapeHtml(title)}</div>
           </div>
           <div class="meta"><div><strong>Generated:</strong> ${nowStr}</div><div><strong>Blocks:</strong> ${slots.length}</div></div>
@@ -419,7 +419,7 @@ export const printAcademicLedger = (tasks = [], scopeName = "All Projects") => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>TaskNova Academic Ledger - ${escapeHtml(scopeName)}</title>
+        <title>TaskNova Ledger - ${escapeHtml(scopeName)}</title>
         <style>
           @page {
             size: A4 portrait;
@@ -512,12 +512,12 @@ export const printAcademicLedger = (tasks = [], scopeName = "All Projects") => {
       <body>
         <div class="header">
           <div>
-            <div class="brand-title">TaskNova · Academic Assignment Ledger</div>
-            <div class="brand-sub">${escapeHtml(scopeName || "Comprehensive Course Roster")}</div>
+            <div class="brand-title">TaskNova · Assignment Ledger</div>
+            <div class="brand-sub">${escapeHtml(scopeName || "Comprehensive Roster")}</div>
           </div>
           <div class="meta">
             <div><strong>Generated:</strong> ${nowStr}</div>
-            <div><strong>Status:</strong> Verified Academic Record</div>
+            <div><strong>Status:</strong> Verified Record</div>
           </div>
         </div>
 
@@ -545,8 +545,8 @@ export const printAcademicLedger = (tasks = [], scopeName = "All Projects") => {
         </table>
 
         <div class="footer">
-          <span>TaskNova Academic Workplace Suite</span>
-          <span>Official Printable Assignment Document</span>
+          <span>TaskNova Workplace Suite</span>
+          <span>Official Printable Document</span>
         </div>
       </body>
     </html>
@@ -584,7 +584,7 @@ export const printDailyDigest = (digest = {}, dateStr = "") => {
   const rate = digest.completion_rate || (total > 0 ? Math.round((completed / total) * 100) : 0);
   const grade = digest.grade || "A";
   const momentum = digest.momentum || "Active Progress";
-  const quote = digest.quote || "Consistent daily study sprints build unstoppable academic momentum.";
+  const quote = digest.quote || "Consistent daily sprints build unstoppable momentum.";
   const displayDate = dateStr || digest.report_date || "Today's Productivity Digest";
 
   const escapeHtml = (text) => {
@@ -784,13 +784,13 @@ export const printDailyDigest = (digest = {}, dateStr = "") => {
             <div class="brand-sub">${escapeHtml(displayDate)}</div>
           </div>
           <div class="meta">
-            <div>Academic Grade:</div>
+            <div>Grade:</div>
             <div class="grade-badge">${escapeHtml(grade)}</div>
           </div>
         </div>
 
         <div class="quote-box">
-          <div class="quote-title">Study Velocity: ${escapeHtml(momentum)}</div>
+          <div class="quote-title">Momentum: ${escapeHtml(momentum)}</div>
           <div class="quote-text">"${escapeHtml(quote)}"</div>
         </div>
 
@@ -808,7 +808,7 @@ export const printDailyDigest = (digest = {}, dateStr = "") => {
           <div class="card" style="border-color: #c7d2fe; background: #eef2ff;">
             <div class="card-label" style="color: #4338ca;">In Progress</div>
             <div class="card-val" style="color: #4338ca;">${inProgress}</div>
-            <div class="card-sub" style="color: #4f46e5;">active study</div>
+            <div class="card-sub" style="color: #4f46e5;">active focus</div>
           </div>
           <div class="card" style="border-color: #fecdd3; background: #fff1f2;">
             <div class="card-label" style="color: #be123c;">Overdue</div>
@@ -818,7 +818,7 @@ export const printDailyDigest = (digest = {}, dateStr = "") => {
         </div>
 
         <div style="font-size: 8pt; font-weight: 700; color: #475569; display: flex; justify-content: space-between;">
-          <span>Semester Workload Completion</span>
+          <span>Workload Completion</span>
           <span>${rate}%</span>
         </div>
         <div class="progress-bar-container">
@@ -828,7 +828,7 @@ export const printDailyDigest = (digest = {}, dateStr = "") => {
         ${courseTableHtml}
 
         <div class="footer">
-          <span>TaskNova Academic Workplace Suite</span>
+          <span>TaskNova Workplace Suite</span>
           <span>Official Productivity Snapshot &bull; Printed ${nowStr}</span>
         </div>
       </body>

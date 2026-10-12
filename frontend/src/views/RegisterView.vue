@@ -41,21 +41,21 @@ const submit = async () => {
         <BrandLogo size="lg" to="/login" />
 
         <h1 class="font-display text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
-          Structure your academic journey with precision.
+          Structure your days with precision.
         </h1>
 
         <p class="body-copy max-w-lg text-base">
-          Start with a single course or research project and build a reliable rhythm of accountability, progress, and achievement.
+          Start with a single project and build a reliable rhythm of accountability, progress, and achievement.
         </p>
 
         <!-- Perks Card -->
         <div class="rounded-2xl border border-slate-200/80 bg-white/60 p-5 backdrop-blur-sm dark:border-slate-800 dark:bg-night-card/60">
           <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
             <AppIcon name="sparkles" :size="16" />
-            <span>Included for Students</span>
+            <span>Included for everyone</span>
           </div>
           <p class="mt-2 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-            Unlimited courses, interactive Kanban boards, personal productivity digests, and Pomodoro study sprints designed specifically for students.
+            Unlimited projects, interactive Kanban boards, personal productivity digests, and Pomodoro focus sprints designed for every routine.
           </p>
         </div>
       </section>
@@ -64,7 +64,7 @@ const submit = async () => {
       <section class="lg:col-span-5">
         <div class="surface-elevated p-8">
           <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Create Account</h2>
-          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Get your personal academic workspace ready in under a minute.</p>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Get your personal hub ready in under a minute.</p>
 
           <form class="mt-6 space-y-4" @submit.prevent="submit" novalidate>
             <FormField label="Full Name" field-id="full-name" :error="formErrors.full_name || ''">
@@ -81,14 +81,14 @@ const submit = async () => {
               />
             </FormField>
 
-            <FormField label="University / Academic Email" field-id="register-email" :error="formErrors.email || ''">
+            <FormField label="Email address" field-id="register-email" :error="formErrors.email || ''">
               <input
                 id="register-email"
                 v-model="form.email"
                 class="input-field"
                 type="email"
                 autocomplete="email"
-                placeholder="alex@university.edu"
+                placeholder="alex@example.com"
                 required
                 :aria-invalid="!!formErrors.email"
               />
@@ -135,7 +135,7 @@ const submit = async () => {
               Sign in
             </router-link>
             <div class="mt-3 flex items-center justify-center gap-2 text-[11px] font-mono text-slate-400 dark:text-slate-500">
-              <span>TaskNova Academic</span>
+              <span>TaskNova</span>
               <span>•</span>
               <span class="rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 font-bold text-slate-600 dark:text-slate-400">v{{ APP_VERSION }}</span>
             </div>

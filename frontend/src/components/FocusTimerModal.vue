@@ -92,7 +92,7 @@ const progressBarClass = computed(() => {
             >
               <AppIcon name="timer" :size="17" />
             </div>
-            <h3 class="min-w-0 flex-1 truncate text-left font-display text-sm font-bold text-slate-900 dark:text-white sm:text-base">Academic Focus Timer</h3>
+            <h3 class="min-w-0 flex-1 truncate text-left font-display text-sm font-bold text-slate-900 dark:text-white sm:text-base">Focus Timer</h3>
           </div>
           <button
             type="button"

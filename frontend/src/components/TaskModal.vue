@@ -191,7 +191,7 @@ const submitForm = () => {
               v-model="form.description"
               class="input-field min-h-24 resize-y font-sans text-xs"
               maxlength="10000"
-              placeholder="Include syllabus instructions, checkpoints (- [ ] task), formulas ($$...$$), or study notes..."
+              placeholder="Include instructions, checkpoints (- [ ] task), formulas ($$...$$), or notes..."
             ></textarea>
             <span v-if="formErrors.description" class="field-error"><AppIcon name="info" :size="14" />{{ formErrors.description }}</span>
           </div>
@@ -200,14 +200,14 @@ const submitForm = () => {
           <div class="grid gap-4 sm:grid-cols-2">
             <!-- Project / Course Selector -->
             <div>
-              <label class="field-label" for="task-project">Course / Project <span class="text-rose-500">*</span></label>
+              <label class="field-label" for="task-project">Project <span class="text-rose-500">*</span></label>
               <select
                 id="task-project"
                 v-model="form.project_id"
                 class="input-field"
                 required
               >
-                <option value="" disabled>Select Course / Project</option>
+                <option value="" disabled>Select Project</option>
                 <option v-for="p in projects" :key="p.id" :value="p.id">
                   {{ p.name }}
                 </option>

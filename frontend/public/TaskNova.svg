@@ -47,9 +47,9 @@
       Task<tspan fill="url(#novaWordGrad)">Nova</tspan>
     </text>
 
-    <!-- Academic Workplace Tagline -->
+    <!-- Brand Tagline -->
     <text x="1" y="65" font-family="'SF Mono', 'Courier New', Courier, monospace" font-size="10.5" font-weight="700" letter-spacing="2" fill="#4f46e5">
-      ACADEMIC WORKPLACE
+      ONE CALM DAILY HUB
     </text>
   </g>
 </svg>
