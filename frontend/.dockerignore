@@ -1,0 +1,10 @@
+# Keep secrets and host build state out of the production image.
+.env
+.env.local
+.env.*.local
+node_modules/
+dist/
+.git/
+.gitignore
+.vscode/
+.idea/

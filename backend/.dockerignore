@@ -1,0 +1,20 @@
+# Never bake local secrets or dev state into the production image.
+.env
+.env.local
+.env.*.local
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+instance/
+uploads/
+*.db
+*.sqlite*
+celerybeat-schedule*
+tests/
+.git/
+.gitignore
+.vscode/
+.idea/

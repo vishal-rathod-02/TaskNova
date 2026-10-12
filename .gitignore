@@ -9,6 +9,14 @@
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.backup
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+credentials.json
+service-account*.json
 !.env.example
 
 # IDE & Code Editors
